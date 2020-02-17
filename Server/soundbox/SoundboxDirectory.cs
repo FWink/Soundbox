@@ -7,7 +7,7 @@ namespace Soundbox
 {
     public class SoundboxDirectory : SoundboxFile
     {
-        public ICollection<SoundboxFile> Children;
+        public ICollection<SoundboxFile> Children = new List<SoundboxFile>();
 
         /// <summary>
         /// Unique watermark that gets updated whenever a change in <see cref="Children"/>
@@ -21,6 +21,20 @@ namespace Soundbox
         /// However a sibling of 'directory' is unaffected.
         /// </summary>
         public Guid Watermark;
+
+        public void AddChild(SoundboxFile file)
+        {
+            this.Children.Add(file);
+            file.ParentDirectory = this;
+        }
+
+        public void AddChildren(IEnumerable<SoundboxFile> files)
+        {
+            foreach(var child in files)
+            {
+                AddChild(child);
+            }
+        }
 
         public bool IsRootDirectory()
         {

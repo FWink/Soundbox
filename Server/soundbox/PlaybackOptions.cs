@@ -11,7 +11,7 @@ namespace Soundbox
     public class PlaybackOptions
     {
         /// <summary>
-        /// Static volume on a 0-100 scale (relative to the overall sound volume).
+        /// Static volume on a 1-100 scale (relative to the overall sound volume).
         /// </summary>
         public int Volume;
 
@@ -30,5 +30,16 @@ namespace Soundbox
         /// Whether to clip the current sound for a negative <see cref="ChainDelayMs"/>. False: sounds may overlap.
         /// </summary>
         public bool ChainDelayClip;
+
+        public static PlaybackOptions Default()
+        {
+            var options = new PlaybackOptions();
+            options.Volume = 100;
+            options.SpeedPitch = 1;
+            options.ChainDelayMs = 0;
+            options.ChainDelayClip = false;
+
+            return options;
+        }
     }
 }

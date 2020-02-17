@@ -5,14 +5,13 @@ using System.Threading.Tasks;
 
 namespace Soundbox
 {
-    public class PlayingNow
+    public class SoundEventArgs : EventArgs
     {
-        public Sound Sound;
-        public FromUser User;
+        public readonly Sound Sound;
 
-        public class FromUser
+        public SoundEventArgs(Sound sound)
         {
-            public string Name;
+            this.Sound = sound;
         }
     }
 }

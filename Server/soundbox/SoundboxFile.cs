@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -28,6 +29,7 @@ namespace Soundbox
         /// TODO during serialization make sure we get a depth of 1 here.
         /// TODO Don't serialize this for persistent storage
         /// </summary>
+        [JsonIgnore]
         public SoundboxDirectory ParentDirectory;
 
         #region Extras
@@ -43,5 +45,26 @@ namespace Soundbox
         public ICollection<string> Tags;
 
         #endregion
+
+        public override bool Equals(object obj)
+        {
+            return obj is SoundboxFile file &&
+                   ID.Equals(file.ID);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(ID);
+        }
+
+        public static bool operator ==(SoundboxFile left, SoundboxFile right)
+        {
+            return EqualityComparer<SoundboxFile>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SoundboxFile left, SoundboxFile right)
+        {
+            return !(left == right);
+        }
     }
 }

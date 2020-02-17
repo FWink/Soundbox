@@ -8,6 +8,11 @@ namespace Soundbox
 {
     public class SoundboxHub : Hub<ISoundboxClient>
     {
+        protected Soundbox GetSoundbox()
+        {
+            return (Soundbox) Context.GetHttpContext().RequestServices.GetService(typeof(Soundbox));
+        }
+
         /// <summary>
         /// Returns the given directory's children (i.e. fetches <see cref="SoundboxDirectory.Children"/>).
         /// </summary>
@@ -19,7 +24,10 @@ namespace Soundbox
         /// </returns>
         public async Task<ICollection<SoundboxFile>> GetSounds(SoundboxDirectory directory = null, bool recursive = false)
         {
-            return new List<SoundboxFile>();
+            return new SoundboxFile[]
+            {
+                GetSoundbox().GetSoundsTree()
+            };
         }
 
         /// <summary>
@@ -38,7 +46,7 @@ namespace Soundbox
         /// <returns></returns>
         public async Task Play(SoundPlaybackRequest request)
         {
-
+            await GetSoundbox().Play(request);
         }
 
         /// <summary>
@@ -114,7 +122,7 @@ namespace Soundbox
         }
 
         /// <summary>
-        /// Moves a file to a new directory.
+        /// Moves a file to a new directory.There is no <see cref="Edit(SoundboxFile)"/> performed on the given file.
         /// </summary>
         /// <param name="file"></param>
         /// <param name="directory"></param>
