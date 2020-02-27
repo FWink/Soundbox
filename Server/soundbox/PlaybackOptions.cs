@@ -31,6 +31,23 @@ namespace Soundbox
         /// </summary>
         public bool ChainDelayClip;
 
+        /// <summary>
+        /// Checks for various (possibly malicious) misconfigurations and attempts to repair them to some degree.
+        /// </summary>
+        /// <returns>
+        /// True if the sanity check was OK and the options may be processed.
+        /// </returns>
+        public bool SanityCheck()
+        {
+            if (Volume < 1)
+                return false;
+            if (Volume > 100)
+                Volume = 100;
+            if (!double.IsNormal(SpeedPitch))
+                return false;
+            return true;
+        }
+
         public static PlaybackOptions Default()
         {
             var options = new PlaybackOptions();

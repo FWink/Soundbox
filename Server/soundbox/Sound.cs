@@ -10,6 +10,6 @@ namespace Soundbox
         /// <summary>
         /// The sound's play length at 100% speed in ms.
         /// </summary>
-        public int Length;
+        public long Length;
     }
 }

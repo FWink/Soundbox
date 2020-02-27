@@ -9,7 +9,7 @@
     <script type="text/javascript">
 
         const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/api/v1")
+            .withUrl("/api/v1/ws")
             .build();
 
         connection.start().then(() => {
@@ -19,19 +19,63 @@
 
                 if (result && result[0] && result[0].children && result[0].children[0]) {
 
-                    connection.invoke("Play", {
-                        Sounds: [{
-                            Sound: result[0].children[0]
-                        }]
-                    });
+                    //connection.invoke("Play", {
+                    //    Sounds: [{
+                    //        Sound: result[0].children[0]
+                    //    }]
+                    //});
                 }
 
                 console.log(result);
             }).catch(err => {
                 console.error(err);
             });
+
+            document.getElementById("btnStop").addEventListener("click", () => {
+                connection.invoke("Stop");
+            });
+
+            document.getElementById("btnUpload").addEventListener("click", () => {
+                const file = document.getElementById("inpFileUpload").files[0];
+                new FileUpload(file);
+            });
         });
 
+        function FileUpload(file) {
+          const reader = new FileReader();  
+          const xhr = new XMLHttpRequest();
+          this.xhr = xhr;
+  
+          const self = this;
+          //this.xhr.upload.addEventListener("progress", function(e) {
+          //      if (e.lengthComputable) {
+          //        const percentage = Math.round((e.loaded * 100) / e.total);
+          //        self.ctrl.update(percentage);
+          //      }
+          //    }, false);
+  
+          //xhr.upload.addEventListener("load", function(e){
+          //        self.ctrl.update(100);
+          //        const canvas = self.ctrl.ctx.canvas;
+          //        canvas.parentNode.removeChild(canvas);
+          //}, false);
+
+            xhr.open("POST", "/api/v1/rest/sound?name=" + file.name);
+
+          //xhr.open("POST", "http://demos.hacks.mozilla.org/paul/demos/resources/webservices/devnull.php");
+            //xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
+            xhr.setRequestHeader("Content-Type", "application/octet-stream");
+          reader.onload = function(evt) {
+            xhr.send(evt.target.result);
+          };
+          reader.readAsArrayBuffer(file);
+        }
+
     </script>
+    <input type="button" id="btnStop" value="Stop" />
+    <div>
+        <input type="file" id="inpFileUpload" />
+        <input type="button" id="btnUpload" value="Upload" />
+    </div>
 </body>
 </html>

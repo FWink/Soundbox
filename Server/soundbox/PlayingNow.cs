@@ -13,6 +13,11 @@ namespace Soundbox
         public class FromUser
         {
             public string Name;
+
+            public FromUser(Users.User user)
+            {
+                //TODO
+            }
         }
     }
 }

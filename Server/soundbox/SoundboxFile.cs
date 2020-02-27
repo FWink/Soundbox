@@ -46,6 +46,32 @@ namespace Soundbox
 
         #endregion
 
+        /// <summary>
+        /// A dummy ID that can be used to indicate that a new item should be created. Value: 00000000-0000-0000-0000-000000000000<br/>
+        /// Parsers should set this value when no <see cref="ID"/> is found while parsing (which they should do automatically since this is <see cref="Guid"/>'s default value).
+        /// </summary>
+        public static readonly Guid ID_DEFAULT_NEW_ITEM = default;
+
+        /// <summary>
+        /// Updates the <see cref="AbsoluteFileName"/> after a change to <see cref="FileName"/> or <see cref="ParentDirectory"/>.
+        /// </summary>
+        public void UpdateAbsoluteFileName()
+        {
+            if(ParentDirectory != null && !ParentDirectory.IsRootDirectory())
+            {
+                string absoluteFileName = ParentDirectory.AbsoluteFileName;
+                if (!absoluteFileName.EndsWith("/"))
+                    absoluteFileName += "/";
+                absoluteFileName += FileName;
+
+                this.AbsoluteFileName = absoluteFileName;
+            }
+            else
+            {
+                this.AbsoluteFileName = this.FileName;
+            }
+        }
+
         public override bool Equals(object obj)
         {
             return obj is SoundboxFile file &&

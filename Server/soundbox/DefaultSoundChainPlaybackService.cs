@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Soundbox.Util;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -29,7 +30,7 @@ namespace Soundbox
         /// <summary>
         /// The <see cref="ISoundPlaybackService"/>s currently playing <see cref="SoundsPlaying"/>.
         /// </summary>
-        protected IDictionary<ISoundPlaybackService, bool> PlayersPlaying = new Dictionary<ISoundPlaybackService, bool>(new SoundPlayBackServiceIdentityProvider());
+        protected ISet<ISoundPlaybackService> PlayersPlaying = new IdentityDictionary<ISoundPlaybackService, bool>().ToSet();
 
         public DefaultSoundChainPlaybackService(IServiceProvider serviceProvider)
         {
@@ -137,10 +138,10 @@ namespace Soundbox
             {
                 player.Play(context, sound);
                 this.SoundsPlaying.Add(sound);
-                this.PlayersPlaying.Add(player, true);
+                this.PlayersPlaying.Add(player);
 
                 //update our listeners
-                ICollection<SoundPlayback> soundsPlaying = new List<SoundPlayback>();
+                ICollection<SoundPlayback> soundsPlaying = new List<SoundPlayback>(this.SoundsPlaying);
 
                 PlaybackChanged?.Invoke(this, new ISoundChainPlaybackService.PlaybackEventArgs(
                     soundsPlaying: soundsPlaying,
@@ -173,7 +174,7 @@ namespace Soundbox
 
                 Finished = true;
 
-                foreach(var player in PlayersPlaying.Keys)
+                foreach(var player in PlayersPlaying)
                 {
                     player.Stop();
                 }
@@ -186,19 +187,6 @@ namespace Soundbox
                 fromStop: true,
                 fromStopGlobal: fromStopGlobal
             ));
-        }
-
-        protected class SoundPlayBackServiceIdentityProvider : IEqualityComparer<ISoundPlaybackService>
-        {
-            public bool Equals([AllowNull] ISoundPlaybackService x, [AllowNull] ISoundPlaybackService y)
-            {
-                return object.ReferenceEquals(x, y);
-            }
-
-            public int GetHashCode([DisallowNull] ISoundPlaybackService obj)
-            {
-                return RuntimeHelpers.GetHashCode(obj);
-            }
         }
     }
 }

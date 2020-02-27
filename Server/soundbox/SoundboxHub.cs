@@ -14,6 +14,16 @@ namespace Soundbox
         }
 
         /// <summary>
+        /// Retrieves the current context's soundbox user.
+        /// </summary>
+        /// <returns></returns>
+        protected Users.User GetUser()
+        {
+            //TODO
+            return new Users.User();
+        }
+
+        /// <summary>
         /// Returns the given directory's children (i.e. fetches <see cref="SoundboxDirectory.Children"/>).
         /// </summary>
         /// <param name="directory">The directory content to fetch. Null for base directory</param>
@@ -46,7 +56,7 @@ namespace Soundbox
         /// <returns></returns>
         public async Task Play(SoundPlaybackRequest request)
         {
-            await GetSoundbox().Play(request);
+            await GetSoundbox().Play(GetUser(), request);
         }
 
         /// <summary>
@@ -95,7 +105,7 @@ namespace Soundbox
         /// <returns></returns>
         public async Task Stop()
         {
-
+            await GetSoundbox().Stop();
         }
 
         /// <summary>
@@ -122,12 +132,27 @@ namespace Soundbox
         }
 
         /// <summary>
-        /// Moves a file to a new directory.There is no <see cref="Edit(SoundboxFile)"/> performed on the given file.
+        /// Moves a file to a new directory. There is no <see cref="Edit(SoundboxFile)"/> performed on the given file.<br/>
+        /// If the given directory's <see cref="SoundboxFile.ID"/> is <see cref="SoundboxFile.ID_DEFAULT_NEW_ITEM"/> then it is created first via <see cref="MakeDirectory(SoundboxDirectory, SoundboxDirectory)"/>.
+        /// In that case <see cref="SoundboxFile.ParentDirectory"/> will be used as the new directory's parent. If it is null then the root directory is used.
         /// </summary>
         /// <param name="file"></param>
         /// <param name="directory"></param>
         /// <returns></returns>
         public async Task Move(SoundboxFile file, SoundboxDirectory directory)
+        {
+
+        }
+
+        /// <summary>
+        /// Creates a new directory in the given parent directory.
+        /// </summary>
+        /// <param name="directory"></param>
+        /// <param name="parent">
+        /// Null: root directory is assumed.
+        /// </param>
+        /// <returns></returns>
+        public async Task MakeDirectory(SoundboxDirectory directory, SoundboxDirectory parent)
         {
 
         }

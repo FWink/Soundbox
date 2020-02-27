@@ -31,9 +31,9 @@ namespace Soundbox
         /// </list>
         /// </summary>
         /// <returns></returns>
-        public int GetActualLength()
+        public long GetActualLength()
         {
-            return (int) (Sound.Length / Options.SpeedPitch);
+            return (long) (Sound.Length / Options.SpeedPitch);
         }
     }
 }

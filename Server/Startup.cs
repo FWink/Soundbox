@@ -24,6 +24,8 @@ namespace Soundbox.Server
             services.AddSingleton<Soundbox>();
             services.AddTransient(typeof(ISoundChainPlaybackService), typeof(DefaultSoundChainPlaybackService));
             services.AddTransient(typeof(ISoundPlaybackService), typeof(SimpleDummySoundPlaybackService));
+
+            services.AddControllers();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -39,7 +41,8 @@ namespace Soundbox.Server
             app.UseRouting();
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapHub<SoundboxHub>("/api/v1");
+                endpoints.MapHub<SoundboxHub>("/api/v1/ws");
+                endpoints.MapControllers();
             });
         }
     }
