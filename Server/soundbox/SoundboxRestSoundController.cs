@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
@@ -15,8 +16,14 @@ namespace Soundbox.Server
     {
         // POST api/<controller>
         [HttpPost]
-        public async Task Post([FromQuery] string name)
+        public async Task Post([FromQuery] string name, [FromQuery] string directory = null)
         {
+            SoundboxDirectory directoryActual = null;
+            if(!string.IsNullOrWhiteSpace(directory))
+            {
+                directoryActual = JsonConvert.DeserializeObject<SoundboxDirectory>(directory);
+            }
+
             Sound sound = new Sound()
             {
                 ID = SoundboxFile.ID_DEFAULT_NEW_ITEM,
@@ -25,12 +32,7 @@ namespace Soundbox.Server
             };
 
             var soundbox = HttpContext.RequestServices.GetService(typeof(Soundbox)) as Soundbox;
-            await soundbox.UploadSound(Request.Body, sound, null);
-        }
-
-        public int Get()
-        {
-            return 5;
+            await soundbox.UploadSound(Request.Body, sound, directoryActual);
         }
     }
 }

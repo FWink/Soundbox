@@ -68,13 +68,26 @@ namespace Soundbox
         /// </summary>
         protected ReaderWriterLockSlim DatabaseLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
+        protected SoundboxDirectory SoundsRoot;
+
         /// <summary>
         /// Returns the root directory of the <see cref="SoundboxFile"/> tree.
         /// </summary>
         /// <returns></returns>
         public SoundboxDirectory GetSoundsTree()
         {
-            return ReadTreeFromDisk();
+            try
+            {
+                DatabaseLock.EnterReadLock();
+
+                if (SoundsRoot == null)
+                    SoundsRoot = ReadTreeFromDisk();
+                return SoundsRoot;
+            }
+            finally
+            {
+                DatabaseLock.ExitReadLock();
+            }
         }
 
         /// <summary>
@@ -142,6 +155,7 @@ namespace Soundbox
                 DatabaseLock.EnterReadLock();
 
                 SoundboxDirectory rootDirectory = new SoundboxDirectory();
+                rootDirectory.ID = Guid.NewGuid();
                 rootDirectory.AddChildren(ReadDirectoryFromDisk(SoundsRootDirectory));
 
                 //read from disk => set new watermark for entire tree
@@ -389,7 +403,7 @@ namespace Soundbox
             }
 
             //TODO maybe create a new directory here if requested
-            if (directory != null && directory.ID == SoundboxFile.ID_DEFAULT_NEW_ITEM)
+            if (directory != null && directory.IsNew())
             {
                 //TODO request to create a new directory -> check
             }
@@ -439,6 +453,9 @@ namespace Soundbox
 
                     //TODO add to cache and database, set watermarks
                     Guid previousWatermark = GetSoundsTree().Watermark;
+
+                    //TODO for testing
+                    SoundsRoot = null;
 
                     //update our clients
                     GetHub().OnFileEvent(new SoundboxFileChangeEvent()
@@ -534,8 +551,34 @@ namespace Soundbox
             if (file == null)
                 return null;
 
-            //TODO
-            return file as T;
+            return GetCleanFileFromDirectory(GetSoundsTree(), file) as T;
+        }
+
+        /// <summary>
+        /// Recursive search function for <see cref="GetCleanFile{T}(T)"/>.
+        /// For testing only until we implemented a look up table.
+        /// </summary>
+        /// <param name="directory"></param>
+        /// <param name="file"></param>
+        /// <returns></returns>
+        private SoundboxFile GetCleanFileFromDirectory(SoundboxDirectory directory, SoundboxFile file)
+        {
+            if (directory.ID == file.ID)
+                return directory;
+
+            foreach(var child in directory.Children)
+            {
+                if (child.ID == file.ID)
+                    return child;
+                if(child is SoundboxDirectory)
+                {
+                    var result = GetCleanFileFromDirectory(child as SoundboxDirectory, file);
+                    if (result != null)
+                        return result;
+                }
+            }
+
+            return null;
         }
 
         #endregion

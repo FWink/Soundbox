@@ -53,6 +53,15 @@ namespace Soundbox
         public static readonly Guid ID_DEFAULT_NEW_ITEM = default;
 
         /// <summary>
+        /// Returns true if this item represents a new item that a client wants to create.
+        /// </summary>
+        /// <returns></returns>
+        public bool IsNew()
+        {
+            return ID == ID_DEFAULT_NEW_ITEM;
+        }
+
+        /// <summary>
         /// Updates the <see cref="AbsoluteFileName"/> after a change to <see cref="FileName"/> or <see cref="ParentDirectory"/>.
         /// </summary>
         public void UpdateAbsoluteFileName()
