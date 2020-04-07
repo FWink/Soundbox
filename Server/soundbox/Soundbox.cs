@@ -309,10 +309,11 @@ namespace Soundbox
         {
             //lower case
             fileName = fileName.ToLowerInvariant();
-            //replace some unicode characters
+            //replace some common unicode characters
             fileName = Regex.Replace(fileName, "[äáàâ]", "a");
             fileName = Regex.Replace(fileName, "[öóòô]", "o");
             fileName = Regex.Replace(fileName, "[üúùû]", "u");
+            fileName = Regex.Replace(fileName, "[ß]", "ss");
             //purge non-ASCII characters and characters invalid for files
             fileName = Regex.Replace(fileName, @"[^a-z0-9.\-_]", "_");
 
@@ -393,25 +394,26 @@ namespace Soundbox
         /// Null: the root directory is used instead.
         /// </param>
         /// <returns></returns>
-        public async Task UploadSound(Stream bytes, Sound sound, SoundboxDirectory directory)
+        public async Task<FileResult> UploadSound(Stream bytes, Sound sound, SoundboxDirectory directory)
         {
             if(sound == null || bytes == null)
             {
                 //error
-                return;
+                return new FileResult(BaseResultStatus.INVALID_PARAMETER);
             }
             if(!CheckUploadFileName(sound.FileName))
             {
                 if(GetFileType(sound.FileName) != null && !CheckUploadFileType(sound.FileName))
                 {
                     //file type is not supported
+                    return new FileResult(FileResultStatus.ILLEGAL_FILE_TYPE);
                 }
-                return;
+                return new FileResult(FileResultStatus.INVALID_FILE_NAME);
             }
             if(!CheckUploadDisplayName(sound.Name))
             {
                 //error
-                return;
+                return new FileResult(FileResultStatus.INVALID_FILE_NAME);
             }
 
             //TODO maybe create a new directory here if requested
@@ -427,7 +429,7 @@ namespace Soundbox
                 if(directory == null)
                 {
                     //does not exist
-                    return;
+                    return new FileResult(FileResultStatus.FILE_DOES_NOT_EXIST);
                 }
             }
 
@@ -439,14 +441,24 @@ namespace Soundbox
             sound.FileName = MakeFileNameUnique(sound);
             sound.UpdateAbsoluteFileName();
 
+            ResultStatus status = BaseResultStatus.INTERNAL_SERVER_ERROR;
+
             //TODO: write into temp file, lock database etc, copy file, add to directory object, save database, update clients, unlock
             //write into temp file
             string tempFile = GetUploadTempFile();
             try
             {
-                using (var output = File.OpenWrite(tempFile))
+                try
                 {
-                    await bytes.CopyToAsync(output);
+                    using (var output = File.OpenWrite(tempFile))
+                    {
+                        await bytes.CopyToAsync(output);
+                    }
+                }
+                catch
+                {
+                    status = FileResultStatus.IO_ERROR;
+                    throw;
                 }
 
                 try
@@ -460,6 +472,7 @@ namespace Soundbox
                     }
                     catch
                     {
+                        status = FileResultStatus.IO_ERROR;
                         //delete the target file
                         try
                         {
@@ -470,12 +483,16 @@ namespace Soundbox
                         throw;
                     }
 
-                    UploadOnNewFile(sound, directory);
+                    return UploadOnNewFile(sound, directory);
                 }
                 finally
                 {
                     DatabaseLock.ExitWriteLock();
                 }
+            }
+            catch(Exception ex)
+            {
+                Log(ex);
             }
             finally
             {
@@ -486,6 +503,8 @@ namespace Soundbox
                 }
                 catch { }
             }
+
+            return new FileResult(status);
         }
 
         /// <summary>
@@ -493,7 +512,7 @@ namespace Soundbox
         /// </summary>
         /// <param name="newFile"></param>
         /// <param name="parent"></param>
-        private void UploadOnNewFile(SoundboxFile newFile, SoundboxDirectory parent)
+        private FileResult UploadOnNewFile(SoundboxFile newFile, SoundboxDirectory parent)
         {
             try
             {
@@ -517,6 +536,8 @@ namespace Soundbox
                     File = newFile,
                     PreviousWatermark = previousWatermark
                 });
+
+                return new FileResult(BaseResultStatus.OK, newFile, previousWatermark);
             }
             finally
             {
@@ -627,22 +648,22 @@ namespace Soundbox
         /// Null: root directory is assumed.
         /// </param>
         /// <returns></returns>
-        public async Task MakeDirectory(SoundboxDirectory directory, SoundboxDirectory parent)
+        public FileResult MakeDirectory(SoundboxDirectory directory, SoundboxDirectory parent)
         {
             if(directory == null)
             {
                 //error
-                return;
+                return new FileResult(BaseResultStatus.INVALID_PARAMETER);
             }
             if(!CheckUploadDirectoryName(directory.Name))
             {
                 //error
-                return;
+                return new FileResult(FileResultStatus.INVALID_FILE_NAME);
             }
             if(!CheckUploadDisplayName(directory.Name))
             {
                 //error
-                return;
+                return new FileResult(FileResultStatus.INVALID_FILE_NAME);
             }
 
             if (parent == null)
@@ -653,7 +674,7 @@ namespace Soundbox
                 if(parent == null)
                 {
                     //given parent does not exist => error
-                    return;
+                    return new FileResult(FileResultStatus.FILE_DOES_NOT_EXIST);
                 }
             }
 
@@ -666,14 +687,24 @@ namespace Soundbox
             directory.FileName = MakeFileNameUnique(directory);
             directory.UpdateAbsoluteFileName();
 
+            ResultStatus status = BaseResultStatus.INTERNAL_SERVER_ERROR;
+
             try
             {
                 DatabaseLock.EnterWriteLock();
 
                 //create the directory on disk
-                Directory.CreateDirectory(GetAbsoluteFileName(directory));
+                try
+                {
+                    Directory.CreateDirectory(GetAbsoluteFileName(directory));
+                }
+                catch
+                {
+                    status = FileResultStatus.IO_ERROR;
+                    throw;
+                }
 
-                UploadOnNewFile(directory, parent);
+                return UploadOnNewFile(directory, parent);
             }
             catch (Exception ex)
             {
@@ -689,6 +720,8 @@ namespace Soundbox
             {
                 DatabaseLock.ExitWriteLock();
             }
+
+            return new FileResult(status);
         }
 
         /// <summary>

@@ -157,9 +157,9 @@ namespace Soundbox
         /// Null: root directory is assumed.
         /// </param>
         /// <returns></returns>
-        public async Task MakeDirectory(SoundboxDirectory directory, SoundboxDirectory parent)
+        public FileResult MakeDirectory(SoundboxDirectory directory, SoundboxDirectory parent)
         {
-            await GetSoundbox().MakeDirectory(directory, parent);
+            return GetSoundbox().MakeDirectory(directory, parent);
         }
     }
 }

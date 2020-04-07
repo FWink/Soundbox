@@ -16,16 +16,13 @@ namespace Soundbox
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSignalR()
-                .AddNewtonsoftJsonProtocol(options =>
-                {
-                    //nothing to do for now
-                });
+            services.AddSignalR().AddNewtonsoftJsonProtocol();
+
             services.AddSingleton<Soundbox>();
             services.AddTransient(typeof(ISoundChainPlaybackService), typeof(DefaultSoundChainPlaybackService));
             services.AddTransient(typeof(ISoundPlaybackService), typeof(SimpleDummySoundPlaybackService));
 
-            services.AddControllers();
+            services.AddControllers().AddNewtonsoftJson();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

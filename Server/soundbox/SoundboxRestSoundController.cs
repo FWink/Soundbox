@@ -16,7 +16,7 @@ namespace Soundbox
     {
         // POST api/<controller>
         [HttpPost]
-        public async Task Post([FromQuery] string name, [FromQuery] string directory = null)
+        public async Task<FileResult> Post([FromQuery] string name, [FromQuery] string directory = null)
         {
             SoundboxDirectory directoryActual = null;
             if(!string.IsNullOrWhiteSpace(directory))
@@ -32,7 +32,7 @@ namespace Soundbox
             };
 
             var soundbox = HttpContext.RequestServices.GetService(typeof(Soundbox)) as Soundbox;
-            await soundbox.UploadSound(Request.Body, sound, directoryActual);
+            return await soundbox.UploadSound(Request.Body, sound, directoryActual);
         }
     }
 }
