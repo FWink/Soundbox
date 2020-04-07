@@ -21,6 +21,8 @@ namespace Soundbox
             services.AddSingleton<Soundbox>();
             services.AddTransient(typeof(ISoundChainPlaybackService), typeof(DefaultSoundChainPlaybackService));
             services.AddTransient(typeof(ISoundPlaybackService), typeof(SimpleDummySoundPlaybackService));
+            services.AddSingleton(typeof(IPreferencesProvider<int>), typeof(DummyIntPreferencesProvider));
+            services.AddSingleton(typeof(IVolumeService), typeof(DummyVolumeService));
 
             services.AddControllers().AddNewtonsoftJson();
         }

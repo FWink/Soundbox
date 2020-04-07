@@ -21,10 +21,10 @@ namespace Soundbox
 
         public event EventHandler<ISoundPlaybackService.PlaybackEventArgs> PlaybackFinished;
 
-        public void Play(SoundboxContext context, SoundPlayback sound)
+        public Task Play(SoundboxContext context, SoundPlayback sound)
         {
             if (Finished)
-                return;
+                return Task.FromResult(false);
 
             this.Sound = sound;
             this.WavPlayer = new System.Media.SoundPlayer(context.GetAbsoluteFileName(sound.Sound));
@@ -44,11 +44,13 @@ namespace Soundbox
                     ));
                 }
             }).Start();
+
+            return Task.FromResult(true);
         }
 
         public void Stop()
         {
-            lock(this)
+            lock (this)
             {
                 if (Finished)
                     return;

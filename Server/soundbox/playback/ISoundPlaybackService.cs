@@ -15,7 +15,11 @@ namespace Soundbox
         /// </summary>
         /// <param name="context"></param>
         /// <param name="sound"></param>
-        void Play(SoundboxContext context, SoundPlayback sound);
+        /// <returns>
+        /// The returned task does not finish when the sound finished playing (<see cref="PlaybackFinished"/>),
+        /// but rather when the playback started (i.e. creation of any required processes has finished and those processes have been kicked off).
+        /// </returns>
+        Task Play(SoundboxContext context, SoundPlayback sound);
 
         /// <summary>
         /// Immediately stops the playback of the sound.

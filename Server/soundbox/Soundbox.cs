@@ -965,6 +965,98 @@ namespace Soundbox
 
         #endregion
 
+        #region "Volume"
+
+        /// <summary>
+        /// Maximum volume modifier. Is multiplied with the volume given in <see cref="SetVolume(int)"/>.
+        /// </summary>
+        protected int VolumeSettingMax = -1;
+
+        protected const string PREFERENCES_KEY_VOLUME_MAX = "Soundbox.Volume.Max";
+
+        /// <summary>
+        /// Sets the current global system volume thus adjusting the playback volume of all currently active sounds.
+        /// </summary>
+        /// <param name="volume"></param>
+        /// <returns></returns>
+        public async Task SetVolume(int volume)
+        {
+            //TODO check value, error
+            double volumeMax = await GetVolumeSettingMax();
+            double volumeModified = Volume.GetVolume(volume, volumeMax);
+
+            var volumeService = ServiceProvider.GetService(typeof(IVolumeService)) as IVolumeService;
+            await volumeService.SetVolume(volumeModified);
+
+            //update our clients
+            GetHub().OnVolumeChanged(volume);
+        }
+
+        /// <summary>
+        /// Returns the current system volume (i.e. the volume passed last to <see cref="SetVolume(int)"/>).
+        /// </summary>
+        /// <returns></returns>
+        public async Task<int> GetVolume()
+        {
+            var volumeService = ServiceProvider.GetService(typeof(IVolumeService)) as IVolumeService;
+            double volume = await volumeService.GetVolume();
+
+            double volumeMax = await GetVolumeSettingMax();
+            return (int) Math.Round(Volume.GetVolumeOriginal(volume, volumeMax));
+        }
+
+        /// <summary>
+        /// Returns <see cref="VolumeSettingMax"/> and loads it from the preferences (<see cref="IPreferencesProvider{T}"/>) first if required.<br/>
+        /// This max volume multiplied with <see cref="GetVolume"/> results in the actual current system volume.
+        /// </summary>
+        /// <returns></returns>
+        public async Task<int> GetVolumeSettingMax()
+        {
+            if(VolumeSettingMax >= 0)
+            {
+                return VolumeSettingMax;
+            }
+
+            var preferences = ServiceProvider.GetService(typeof(IPreferencesProvider<int>)) as IPreferencesProvider<int>;
+            if(await preferences.Contains(PREFERENCES_KEY_VOLUME_MAX))
+            {
+                int setting = await preferences.Get(PREFERENCES_KEY_VOLUME_MAX);
+                if (setting > 100)
+                    setting = 100;
+                else if (setting < 0)
+                    setting = 0;
+
+                VolumeSettingMax = setting;
+            }
+            else
+            {
+                VolumeSettingMax = 100;
+            }
+
+            return VolumeSettingMax;
+        }
+
+        /// <summary>
+        /// Adjusts <see cref="VolumeSettingMax"/>. Playback volume of all active sounds is adjusted immediately.
+        /// </summary>
+        /// <seealso cref="GetVolumeSettingMax"/>
+        public async Task SetVolumeSettingMax(int volumeSettingMax)
+        {
+            //TODO check value, error
+            //get the last value of SetVolume. need that to adjust the current playback volume accordingly
+            int currentVolumeSetting = await GetVolume();
+
+            var preferences = ServiceProvider.GetService(typeof(IPreferencesProvider<int>)) as IPreferencesProvider<int>;
+            await preferences.Set(PREFERENCES_KEY_VOLUME_MAX, volumeSettingMax);
+
+            //update our clients
+            GetHub().OnSettingMaxVolumeChanged(volumeSettingMax);
+            //update the current playback volume
+            await SetVolume(currentVolumeSetting);
+        }
+
+        #endregion
+
         protected void Log(Exception ex)
         {
             //TODO

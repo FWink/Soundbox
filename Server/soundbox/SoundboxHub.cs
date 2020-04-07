@@ -54,18 +54,18 @@ namespace Soundbox
         /// </summary>
         /// <param name="request"></param>
         /// <returns></returns>
-        public async Task Play(SoundPlaybackRequest request)
+        public Task Play(SoundPlaybackRequest request)
         {
-            await GetSoundbox().Play(GetUser(), request);
+            return GetSoundbox().Play(GetUser(), request);
         }
 
         /// <summary>
         /// Gets the current volume level (<see cref="SetVolume(int)"/>).
         /// </summary>
         /// <returns></returns>
-        public async Task<int> GetVolume()
+        public Task<int> GetVolume()
         {
-            return 100;
+            return GetSoundbox().GetVolume();
         }
 
         /// <summary>
@@ -73,18 +73,18 @@ namespace Soundbox
         /// </summary>
         /// <param name="volume"></param>
         /// <returns></returns>
-        public async Task SetVolume(int volume)
+        public Task SetVolume(int volume)
         {
-
+            return GetSoundbox().SetVolume(volume);
         }
 
         /// <summary>
         /// Gets the current maximum system volume (<see cref="SetSettingMaxVolume(int)"/>).
         /// </summary>
         /// <returns></returns>
-        public async Task<int> GetSettingMaxVolume()
+        public Task<int> GetSettingMaxVolume()
         {
-            return 100;
+            return GetSoundbox().GetVolumeSettingMax();
         }
 
         /// <summary>
@@ -94,18 +94,18 @@ namespace Soundbox
         /// </summary>
         /// <param name="volume"></param>
         /// <returns></returns>
-        public async Task SetSettingMaxVolume(int volume)
+        public Task SetSettingMaxVolume(int volume)
         {
-
+            return GetSoundbox().SetVolumeSettingMax(volume);
         }
 
         /// <summary>
         /// Immediately stops all playback.
         /// </summary>
         /// <returns></returns>
-        public async Task Stop()
+        public Task Stop()
         {
-            await GetSoundbox().Stop();
+            return GetSoundbox().Stop();
         }
 
         /// <summary>
