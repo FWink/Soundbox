@@ -314,7 +314,7 @@ namespace Soundbox
             fileName = Regex.Replace(fileName, "[öóòô]", "o");
             fileName = Regex.Replace(fileName, "[üúùû]", "u");
             //purge non-ASCII characters and characters invalid for files
-            fileName = fileName.Replace("[^a-z0-9.-_]", "_");
+            fileName = Regex.Replace(fileName, @"[^a-z0-9.\-_]", "_");
 
             if (IsFileNameReserved(fileName))
             {
@@ -333,6 +333,8 @@ namespace Soundbox
         protected bool IsFileNameReserved(string fileName)
         {
             fileName = GetFileNamePure(fileName);
+            if (fileName == null)
+                return false;
 
             return fileName == "con" ||
                 fileName == "prn" ||
@@ -366,7 +368,7 @@ namespace Soundbox
         {
             if (fileName == null)
                 return null;
-            var match = Regex.Match(fileName, @"\.([^.]*)$");
+            var match = Regex.Match(fileName, @"\.([^.]+)$");
             if (match.Success)
                 return match.Groups[1].Value;
             return null;
