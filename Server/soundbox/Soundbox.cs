@@ -395,12 +395,22 @@ namespace Soundbox
         /// <returns></returns>
         public async Task UploadSound(Stream bytes, Sound sound, SoundboxDirectory directory)
         {
+            if(sound == null || bytes == null)
+            {
+                //error
+                return;
+            }
             if(!CheckUploadFileName(sound.FileName))
             {
                 if(GetFileType(sound.FileName) != null && !CheckUploadFileType(sound.FileName))
                 {
                     //file type is not supported
                 }
+                return;
+            }
+            if(!CheckUploadDisplayName(sound.Name))
+            {
+                //error
                 return;
             }
 
@@ -421,9 +431,12 @@ namespace Soundbox
                 }
             }
 
+            //TODO check display name unique in parent
+
             sound.ID = Guid.NewGuid();
-            sound.FileName = NormalizeFileName(sound.FileName);
             sound.ParentDirectory = directory;
+            sound.FileName = NormalizeFileName(sound.FileName);
+            sound.FileName = MakeFileNameUnique(sound);
             sound.UpdateAbsoluteFileName();
 
             //TODO: write into temp file, lock database etc, copy file, add to directory object, save database, update clients, unlock
@@ -448,24 +461,16 @@ namespace Soundbox
                     catch
                     {
                         //delete the target file
-                        File.Delete(GetAbsoluteFileName(sound));
+                        try
+                        {
+                            File.Delete(GetAbsoluteFileName(sound));
+                        }
+                        catch { }
 
                         throw;
                     }
 
-                    //TODO add to cache and database, set watermarks
-                    Guid previousWatermark = GetSoundsTree().Watermark;
-
-                    //TODO for testing
-                    SoundsRoot = null;
-
-                    //update our clients
-                    GetHub().OnFileEvent(new SoundboxFileChangeEvent()
-                    {
-                        Event = SoundboxFileChangeEvent.Type.ADDED,
-                        File = sound,
-                        PreviousWatermark = previousWatermark
-                    });
+                    UploadOnNewFile(sound, directory);
                 }
                 finally
                 {
@@ -475,8 +480,60 @@ namespace Soundbox
             finally
             {
                 //delete the temp file should it still exist
-                File.Delete(tempFile);
+                try
+                {
+                    File.Delete(tempFile);
+                }
+                catch { }
             }
+        }
+
+        /// <summary>
+        /// Adds the given new file to our in-memory data structures and to our database. Updates all clients on success.
+        /// </summary>
+        /// <param name="newFile"></param>
+        /// <param name="parent"></param>
+        private void UploadOnNewFile(SoundboxFile newFile, SoundboxDirectory parent)
+        {
+            try
+            {
+                DatabaseLock.EnterWriteLock();
+
+                //save previous watermark for event
+                Guid previousWatermark = GetSoundsTree().Watermark;
+                Guid newWatermark = Guid.NewGuid();
+
+                //TODO add to database
+
+                //add to cache
+                parent.AddChild(newFile);
+                //update cache watermarks
+                SetWatermark(newFile, newWatermark);
+
+                //update our clients
+                GetHub().OnFileEvent(new SoundboxFileChangeEvent()
+                {
+                    Event = SoundboxFileChangeEvent.Type.ADDED,
+                    File = newFile,
+                    PreviousWatermark = previousWatermark
+                });
+            }
+            finally
+            {
+                DatabaseLock.ExitWriteLock();
+            }
+        }
+
+        /// <summary>
+        /// Creates a unique file name for the given file upon upload. It is guaranteed to be globally unique.
+        /// </summary>
+        /// <param name="sound"></param>
+        /// <returns></returns>
+        protected string MakeFileNameUnique(SoundboxFile file)
+        {
+            //"my_sound.mp3" -> "my_sound_MYUID.mp3"
+            string name = GetFileNamePure(file.FileName);
+            return Regex.Replace(file.FileName, "^" + Regex.Escape(name), name + "_" + file.ID.ToString());
         }
 
         /// <summary>
@@ -515,6 +572,19 @@ namespace Soundbox
         }
 
         /// <summary>
+        /// Checks if the given <see cref="SoundboxFile.Name"/> is valid (e.g. is not empty...)
+        /// </summary>
+        /// <param name="displayName"></param>
+        /// <returns></returns>
+        protected bool CheckUploadDisplayName(string displayName)
+        {
+            if (string.IsNullOrWhiteSpace(displayName))
+                return false;
+
+            return true;
+        }
+
+        /// <summary>
         /// Returns the name of a temporary file for the upload of a new sound.
         /// </summary>
         /// <returns></returns>
@@ -537,6 +607,101 @@ namespace Soundbox
             Directory.CreateDirectory(directory);
 
             return directory;
+        }
+
+        #endregion
+
+        #region "Directories"
+
+
+        /// <summary>
+        /// Creates a new directory in the given parent directory.
+        /// </summary>
+        /// <param name="directory">
+        /// Information used when adding the new sound:<list type="bullet">
+        /// <item><see cref="SoundboxFile.Name"/></item>
+        /// <item><see cref="SoundboxFile.Tags"/></item>
+        /// </list>
+        /// </param>
+        /// <param name="parent">
+        /// Null: root directory is assumed.
+        /// </param>
+        /// <returns></returns>
+        public async Task MakeDirectory(SoundboxDirectory directory, SoundboxDirectory parent)
+        {
+            if(directory == null)
+            {
+                //error
+                return;
+            }
+            if(!CheckUploadDirectoryName(directory.Name))
+            {
+                //error
+                return;
+            }
+            if(!CheckUploadDisplayName(directory.Name))
+            {
+                //error
+                return;
+            }
+
+            if (parent == null)
+                parent = GetRootDirectory();
+            else
+            {
+                parent = GetCleanFile(parent);
+                if(parent == null)
+                {
+                    //given parent does not exist => error
+                    return;
+                }
+            }
+
+            //TODO check display name unique in parent
+
+            directory.ID = Guid.NewGuid();
+            directory.Children = new List<SoundboxFile>();
+            directory.ParentDirectory = parent;
+            directory.FileName = NormalizeFileName(directory.Name);
+            directory.FileName = MakeFileNameUnique(directory);
+            directory.UpdateAbsoluteFileName();
+
+            try
+            {
+                DatabaseLock.EnterWriteLock();
+
+                //create the directory on disk
+                Directory.CreateDirectory(GetAbsoluteFileName(directory));
+
+                UploadOnNewFile(directory, parent);
+            }
+            catch (Exception ex)
+            {
+                Log(ex);
+                //delete on error
+                try
+                {
+                    Directory.Delete(GetAbsoluteFileName(directory), false);
+                }
+                catch { }
+            }
+            finally
+            {
+                DatabaseLock.ExitWriteLock();
+            }
+        }
+
+        /// <summary>
+        /// Checks if the given file name of a new directory is valid (e.g. is not empty...)
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <returns></returns>
+        protected bool CheckUploadDirectoryName(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return false;
+
+            return true;
         }
 
         #endregion
@@ -588,9 +753,14 @@ namespace Soundbox
         #region "Play"
 
         /// <summary>
+        /// Lock used when accessing the playback related data structures (<see cref="PlayersPlaying"/>).
+        /// </summary>
+        private readonly object PlaybackLock = new object();
+
+        /// <summary>
         /// Keeps track of which sounds are currently being played by whom.
         /// </summary>
-        private IDictionary<ISoundChainPlaybackService, PlaybackContext> PlayersPlaying = new IdentityDictionary<ISoundChainPlaybackService, PlaybackContext>();
+        private readonly IDictionary<ISoundChainPlaybackService, PlaybackContext> PlayersPlaying = new IdentityDictionary<ISoundChainPlaybackService, PlaybackContext>();
 
         /// <summary>
         /// Performs various sanity checks on the given request object and repairs it as well as possible.
@@ -647,7 +817,7 @@ namespace Soundbox
                     return;
 
                 //update the sounds the player is currently playing
-                lock (this)
+                lock (PlaybackLock)
                 {
                     PlaybackContext playerContext;
                     if(!PlayersPlaying.TryGetValue(player, out playerContext))
@@ -671,7 +841,7 @@ namespace Soundbox
 
             var context = new PlaybackContext(user, request, player);
 
-            lock(this)
+            lock(PlaybackLock)
             {
                 PlayersPlaying[player] = context;
                 player.Play(this, request);
@@ -684,7 +854,7 @@ namespace Soundbox
         /// <returns></returns>
         public async Task Stop()
         {
-            lock (this)
+            lock (PlaybackLock)
             {
                 foreach (var player in PlayersPlaying.Keys)
                 {
@@ -710,16 +880,19 @@ namespace Soundbox
         /// Fetches the current playback state from <see cref="PlayersPlaying"/>.
         /// </summary>
         /// <returns></returns>
-        protected ICollection<PlayingNow> GetSoundsPlayingNow()
+        public ICollection<PlayingNow> GetSoundsPlayingNow()
         {
-            ICollection<PlayingNow> playingNow = new List<PlayingNow>();
-
-            foreach(var context in PlayersPlaying.Values)
+            lock (PlaybackLock)
             {
-                playingNow.AddAll(context.GetPlayingNow());
-            }
+                ICollection<PlayingNow> playingNow = new List<PlayingNow>();
 
-            return playingNow;
+                foreach (var context in PlayersPlaying.Values)
+                {
+                    playingNow.AddAll(context.GetPlayingNow());
+                }
+
+                return playingNow;
+            }
         }
 
         /// <summary>

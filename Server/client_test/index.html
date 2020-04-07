@@ -29,6 +29,16 @@
                 const file = document.getElementById("inpFileUpload").files[0];
                 new FileUpload(file, getSelectedUploadDirectory());
             });
+
+            document.getElementById("btnNewDirectory").addEventListener("click", () => {
+                const name = document.getElementById("inpNewDirectory").value;
+                const directory =
+                {
+                    Name: name,
+                    FileName: name
+                };
+                connection.invoke("MakeDirectory", directory, getSelectedUploadDirectory());
+            });
         });
 
         function FileUpload(file, directory) {
@@ -60,6 +70,7 @@
           //xhr.open("POST", "http://demos.hacks.mozilla.org/paul/demos/resources/webservices/devnull.php");
             //xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
             xhr.setRequestHeader("Content-Type", "application/octet-stream");
+            xhr.setRequestHeader("Content-Length", file.size);
           reader.onload = function(evt) {
             xhr.send(evt.target.result);
           };
@@ -166,6 +177,10 @@
     <div>
         <input type="file" id="inpFileUpload" />
         <input type="button" id="btnUpload" value="Upload" />
+    </div>
+    <div>
+        <input type="text" id="inpNewDirectory" />
+        <input type="button" id="btnNewDirectory" value="New Directory" />
     </div>
 </body>
 </html>

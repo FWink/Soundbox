@@ -12,4 +12,8 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.NewtonsoftJson" Version="3.1.2" />
   </ItemGroup>
 
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="copy /y &quot;$(ProjectDir)\client_test\index.html&quot; &quot;$(ProjectDir)\wwwroot\&quot;" />
+  </Target>
+
 </Project>

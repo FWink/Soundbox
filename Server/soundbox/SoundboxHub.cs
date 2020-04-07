@@ -46,7 +46,7 @@ namespace Soundbox
         /// <returns></returns>
         public async Task<ICollection<PlayingNow>> GetSoundsPlayingNow()
         {
-            return null;
+            return GetSoundbox().GetSoundsPlayingNow();
         }
 
         /// <summary>
@@ -147,14 +147,19 @@ namespace Soundbox
         /// <summary>
         /// Creates a new directory in the given parent directory.
         /// </summary>
-        /// <param name="directory"></param>
+        /// <param name="directory">
+        /// Information used when adding the new sound:<list type="bullet">
+        /// <item><see cref="SoundboxFile.Name"/></item>
+        /// <item><see cref="SoundboxFile.Tags"/></item>
+        /// </list>
+        /// </param>
         /// <param name="parent">
         /// Null: root directory is assumed.
         /// </param>
         /// <returns></returns>
         public async Task MakeDirectory(SoundboxDirectory directory, SoundboxDirectory parent)
         {
-
+            await GetSoundbox().MakeDirectory(directory, parent);
         }
     }
 }
