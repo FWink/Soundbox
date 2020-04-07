@@ -416,12 +416,7 @@ namespace Soundbox
                 return new FileResult(FileResultStatus.INVALID_FILE_NAME);
             }
 
-            //TODO maybe create a new directory here if requested
-            if (directory != null && directory.IsNew())
-            {
-                //TODO request to create a new directory -> check
-            }
-            else if (directory == null)
+            if (directory == null)
                 directory = GetRootDirectory();
             else
             {

@@ -44,7 +44,7 @@ namespace Soundbox
         /// Returns all sounds that are currently being played.
         /// </summary>
         /// <returns></returns>
-        public async Task<ICollection<PlayingNow>> GetSoundsPlayingNow()
+        public ICollection<PlayingNow> GetSoundsPlayingNow()
         {
             return GetSoundbox().GetSoundsPlayingNow();
         }

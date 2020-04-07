@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Folder Include="soundbox\playback\" />
     <Folder Include="wwwroot\lib\" />
   </ItemGroup>
 

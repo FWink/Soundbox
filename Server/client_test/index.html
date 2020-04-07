@@ -34,8 +34,7 @@
                 const name = document.getElementById("inpNewDirectory").value;
                 const directory =
                 {
-                    Name: name,
-                    FileName: name
+                    Name: name
                 };
                 connection.invoke("MakeDirectory", directory, getSelectedUploadDirectory());
             });
@@ -60,7 +59,12 @@
           //        canvas.parentNode.removeChild(canvas);
           //}, false);
 
-            var url = "/api/v1/rest/sound?name=" + encodeURIComponent(file.name);
+            var sound = {
+                Name: file.name,
+                FileName: file.name
+            };
+
+            var url = "/api/v1/rest/sound?sound=" + encodeURIComponent(JSON.stringify(sound));
             if (directory) {
                 url += "&directory=" + encodeURIComponent(JSON.stringify(directory));
             }

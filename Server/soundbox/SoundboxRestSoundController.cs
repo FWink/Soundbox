@@ -14,25 +14,36 @@ namespace Soundbox
     [ApiController]
     public class SoundboxRestSoundController : ControllerBase
     {
-        // POST api/<controller>
+        /// <summary>
+        /// Uploads a new <see cref="Sound"/> via <see cref="Soundbox.UploadSound(Stream, Sound, SoundboxDirectory)"/>
+        /// </summary>
+        /// <param name="sound">
+        /// Information used when adding the new sound:<list type="bullet">
+        /// <item><see cref="SoundboxFile.Name"/></item>
+        /// <item><see cref="SoundboxFile.FileName"/></item>
+        /// <item><see cref="SoundboxFile.Tags"/></item>
+        /// </list>
+        /// </param>
+        /// <param name="directory"></param>
+        /// <returns></returns>
         [HttpPost]
-        public async Task<FileResult> Post([FromQuery] string name, [FromQuery] string directory = null)
+        public async Task<FileResult> Post([FromQuery] string sound, [FromQuery] string directory = null)
         {
+            Sound soundActual = null;
+            if(!string.IsNullOrWhiteSpace(sound))
+            {
+                soundActual = JsonConvert.DeserializeObject<Sound>(sound);
+                soundActual.ID = SoundboxFile.ID_DEFAULT_NEW_ITEM;
+            }
+
             SoundboxDirectory directoryActual = null;
             if(!string.IsNullOrWhiteSpace(directory))
             {
                 directoryActual = JsonConvert.DeserializeObject<SoundboxDirectory>(directory);
             }
 
-            Sound sound = new Sound()
-            {
-                ID = SoundboxFile.ID_DEFAULT_NEW_ITEM,
-                FileName = name,
-                Name = name
-            };
-
             var soundbox = HttpContext.RequestServices.GetService(typeof(Soundbox)) as Soundbox;
-            return await soundbox.UploadSound(Request.Body, sound, directoryActual);
+            return await soundbox.UploadSound(Request.Body, soundActual, directoryActual);
         }
     }
 }
