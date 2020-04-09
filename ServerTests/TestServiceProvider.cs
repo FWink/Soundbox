@@ -18,10 +18,14 @@ namespace Soundbox.Test
         {
             if (serviceType.Equals(typeof(IServiceProvider)))
                 return this;
+            if (serviceType.Equals(typeof(ISoundboxConfigProvider)))
+                return BuildService(typeof(TestConfigProvider));
             //TODO
             if (serviceType.Equals(typeof(IHubContext<SoundboxHub, ISoundboxClient>)))
                 return null;
             if (serviceType.Equals(typeof(IConfiguration)))
+                return null;
+            if (serviceType.Equals(typeof(IDatabaseProvider)))
                 return null;
 
             return BuildService(serviceType);

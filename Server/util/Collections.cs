@@ -41,5 +41,32 @@ namespace Soundbox.Util
                 }
             }
         }
+
+        /// <summary>
+        /// Compares two collections if they have the same values while disregarding differences in the order of the values.
+        /// </summary>
+        /// <typeparam name="V"></typeparam>
+        /// <param name="values1"></param>
+        /// <param name="values2"></param>
+        /// <returns></returns>
+        public static bool CollectionsEqual<V>(this ICollection<V> values1, ICollection<V> values2)
+        {
+            if (Object.ReferenceEquals(values1, values2))
+                return true;
+            if (values1 == null || values2 == null)
+                return false;
+            if (values1.Count != values1.Count)
+                return false;
+
+            foreach(var val in values1)
+            {
+                if(!values2.Contains(val))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }
 }
