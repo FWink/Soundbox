@@ -23,6 +23,8 @@ namespace Soundbox
             services.AddTransient(typeof(ISoundPlaybackService), typeof(SimpleDummySoundPlaybackService));
             services.AddSingleton(typeof(IPreferencesProvider<int>), typeof(DummyIntPreferencesProvider));
             services.AddSingleton(typeof(IVolumeService), typeof(DummyVolumeService));
+            services.AddSingleton(typeof(ISoundboxConfigProvider), typeof(DefaultSoundboxConfigProvider));
+            services.AddSingleton(typeof(IDatabaseProvider), typeof(LiteDbDatabaseProvider));
 
             services.AddControllers().AddNewtonsoftJson();
         }

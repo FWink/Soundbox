@@ -43,17 +43,25 @@ namespace Soundbox
         /// </summary>
         protected string SoundsRootDirectory;
 
+        /// <summary>
+        /// Persistent database where we don't store the files themselves, but the meta data (name, tags etc)
+        /// </summary>
+        protected IDatabaseProvider Database;
+
         public Soundbox(
             IServiceProvider serviceProvider,
             IHubContext<SoundboxHub, ISoundboxClient> hubContext,
-            IConfiguration config)
+            ISoundboxConfigProvider config,
+            IDatabaseProvider database)
         {
             this.ServiceProvider = serviceProvider;
             this.HubContext = hubContext;
 
-            //TODO paths from config
-            this.BaseDirectory = "~/.soundbox/";
+            this.BaseDirectory = config.GetRootDirectory();
             this.SoundsRootDirectory = this.BaseDirectory + "sounds/";
+            Directory.CreateDirectory(this.SoundsRootDirectory);
+
+            this.Database = database;
         }
 
         public ISoundboxClient GetHub()
@@ -81,7 +89,23 @@ namespace Soundbox
                 DatabaseLock.EnterReadLock();
 
                 if (SoundsRoot == null)
-                    SoundsRoot = ReadTreeFromDisk();
+                {
+                    //SoundsRoot = ReadTreeFromDisk();
+                    //TODO async
+                    var task = Database.Get();
+                    SoundsRoot = task.Result;
+
+                    if(SoundsRoot == null)
+                    {
+                        //database is empty => create new root directory
+                        SoundsRoot = new SoundboxDirectory();
+                        SoundsRoot.ID = Guid.NewGuid();
+                        SoundsRoot.Watermark = Guid.NewGuid();
+
+                        //TODO async
+                        Database.Insert(SoundsRoot);
+                    }
+                }
                 return SoundsRoot;
             }
             finally
@@ -122,6 +146,8 @@ namespace Soundbox
             do
             {
                 directory.Watermark = watermark;
+                //TODO async
+                Database.Update(directory);
                 directory = directory.ParentDirectory;
             } while (directory != null);
         }
@@ -517,11 +543,13 @@ namespace Soundbox
                 Guid previousWatermark = GetSoundsTree().Watermark;
                 Guid newWatermark = Guid.NewGuid();
 
-                //TODO add to database
-
                 //add to cache
                 parent.AddChild(newFile);
-                //update cache watermarks
+                //add to database
+                //TODO async
+                Database.Insert(newFile);
+
+                //update cache and database watermarks
                 SetWatermark(newFile, newWatermark);
 
                 //update our clients
