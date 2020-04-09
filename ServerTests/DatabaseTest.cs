@@ -39,6 +39,24 @@ namespace Soundbox.Test
         }
 
         /// <summary>
+        /// Simulates a database crash via <see cref="CrashDatabase"/> and then opens a new instance via <see cref="GetDatabase"/>.
+        /// </summary>
+        /// <returns>
+        /// False: Crashing the database is not supported. Tests should abort via <see cref="Assert.Inconclusive"/>
+        /// </returns>
+        protected bool ReopenDatabaseCrash()
+        {
+            if (!CrashDatabase())
+                return false;
+
+            //re-open
+            Database = default;
+            GetDatabase();
+
+            return true;
+        }
+
+        /// <summary>
         /// Opens a database. Must not clear the database beforehand, but instead just opens an existing database or creates a new one.
         /// </summary>
         /// <returns></returns>
@@ -54,6 +72,14 @@ namespace Soundbox.Test
                 disposable.Dispose();
             }
         }
+
+        /// <summary>
+        /// Simulates a process crash by closing the database's internal files without properly disposing everything.<br/>
+        /// </summary>
+        /// <returns>
+        /// True if the operation is supported and succeeded.
+        /// </returns>
+        protected abstract bool CrashDatabase();
 
         public void Dispose()
         {
@@ -477,6 +503,114 @@ namespace Soundbox.Test
 
             //reopen and get
             GetDatabase();
+            var fromDb = await Database.Get();
+
+            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+        }
+
+        #endregion
+
+        #region "Insert/Crash/Get"
+
+        /// <summary>
+        /// Inserts a single directory (the root directory) via <see cref="IDatabaseProvider.Insert(SoundboxFile)"/> and fetches it afterwards with <see cref="IDatabaseProvider.Get"/>.<br/>
+        /// Crashes and re-opens the database before fetching.
+        /// </summary>
+        [TestMethod]
+        public async Task TestInsertDirectoryCrashGet()
+        {
+            SoundboxDirectory directoryRoot = await TestInsertDirectoryGet_Prepare();
+
+            //crash and get
+            if(!ReopenDatabaseCrash())
+            {
+                Assert.Inconclusive("Database provider cannot crash on purpose");
+                return;
+            }
+            var fromDb = await Database.Get();
+
+            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true));
+        }
+
+        /// <summary>
+        /// Inserts a directory (root) and a sound and fetches it afterwards with <see cref="IDatabaseProvider.Get"/>.<br/>
+        /// Crashes and re-opens the database before fetching.
+        /// </summary>
+        /// <returns></returns>
+        [TestMethod]
+        public async Task TestInsertDirectorySoundCrashGet()
+        {
+            SoundboxDirectory directoryRoot = await TestInsertDirectorySoundGet_Prepare();
+
+            //crash and get
+            if (!ReopenDatabaseCrash())
+            {
+                Assert.Inconclusive("Database provider cannot crash on purpose");
+                return;
+            }
+            var fromDb = await Database.Get();
+
+            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+        }
+
+        /// <summary>
+        /// Like <see cref="TestInsertDirectorySoundGet"/> but inserts a child directory instead.<br/>
+        /// Crashes and re-opens the database before fetching.
+        /// </summary>
+        /// <returns></returns>
+        [TestMethod]
+        public async Task TestInsertDirectoryDirectoryCrashGet()
+        {
+            SoundboxDirectory directoryRoot = await TestInsertDirectoryDirectoryGet_Prepare();
+
+            //crash and get
+            if (!ReopenDatabaseCrash())
+            {
+                Assert.Inconclusive("Database provider cannot crash on purpose");
+                return;
+            }
+            var fromDb = await Database.Get();
+
+            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+        }
+
+        /// <summary>
+        /// Like <see cref="TestInsertDirectoryDirectoryGet"/> but adds a sound to the child directory.<br/>
+        /// Crashes and re-opens the database before fetching.
+        /// </summary>
+        /// <returns></returns>
+        [TestMethod]
+        public async Task TestInsertDirectoryDirectorySoundCrashGet()
+        {
+            SoundboxDirectory directoryRoot = await TestInsertDirectoryDirectorySoundGet_Prepare();
+
+            //crash and get
+            if (!ReopenDatabaseCrash())
+            {
+                Assert.Inconclusive("Database provider cannot crash on purpose");
+                return;
+            }
+            var fromDb = await Database.Get();
+
+            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+        }
+
+        /// <summary>
+        /// Like <see cref="TestInsertDirectoryDirectoryGet"/> but adds a sound to the root directory (sibling to the directory).<br/>
+        /// Crashes and re-opens the database before fetching.
+        /// </summary>
+        /// <returns></returns>
+        [TestMethod]
+        public async Task TestInsertDirectorySoundDirectoryCrashGet()
+        {
+            SoundboxDirectory directoryRoot = await TestInsertDirectorySoundDirectoryGet_Prepare();
+
+            //crash and get
+            if (!ReopenDatabaseCrash())
+            {
+                Assert.Inconclusive("Database provider cannot crash on purpose");
+                return;
+            }
             var fromDb = await Database.Get();
 
             Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));

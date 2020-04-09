@@ -549,7 +549,7 @@ namespace Soundbox
                 //TODO async
                 Database.Insert(newFile);
 
-                //update cache and database watermarks
+                //update cache and database watermarks (this will call Update for parent)
                 SetWatermark(newFile, newWatermark);
 
                 //update our clients
