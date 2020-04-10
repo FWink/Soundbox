@@ -19,6 +19,8 @@ namespace Soundbox.Test
         [DataRow(0)]
         [DataRow(-1)]
         [DataRow(1)]
+        [DataRow(1.12345)]
+        [DataRow(-1.12345)]
         [DataRow(2147483648)]
         [DataRow(-2147483648)]
         [DataRow(4294967296)]

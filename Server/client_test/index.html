@@ -84,9 +84,16 @@
                 document.getElementById("spMaxVolume").innerText = event;
             });
 
+            //delete
             document.getElementById("btnDelete").addEventListener("click", () => {
 
                 connection.invoke("Delete", getSelectedNode());
+            });
+
+            //move
+            document.getElementById("btnMove").addEventListener("click", () => {
+
+                connection.invoke("Move", getSelectedNode(), getSelectedUploadDirectory());
             });
         });
 
@@ -177,6 +184,13 @@
             spName.htmlFor = chkbxDirectory.id;
             itemDirectory.appendChild(spName);
 
+            var chkbxDirectorySecondary = document.createElement("input");
+            chkbxDirectorySecondary.type = "radio";
+            chkbxDirectorySecondary.className = "node-rdbtn-select-secondary";
+            chkbxDirectorySecondary.name = "node-rdbtn-select-secondary";
+            chkbxDirectorySecondary.id = directory.id;
+            itemDirectory.appendChild(chkbxDirectorySecondary);
+
             var lstChildren = document.createElement("ul");
             for (var i = 0; i < directory.children.length; ++i) {
                 let child = directory.children[i];
@@ -202,6 +216,13 @@
                     });
                     itemSound.appendChild(btnSound);
 
+                    var chkbxSoundSecondary = document.createElement("input");
+                    chkbxSoundSecondary.type = "radio";
+                    chkbxSoundSecondary.className = "node-rdbtn-select-secondary";
+                    chkbxSoundSecondary.name = "node-rdbtn-select-secondary";
+                    chkbxSoundSecondary.id = child.id;
+                    itemSound.appendChild(chkbxSoundSecondary);
+
                     lstChildren.appendChild(itemSound);
                 }
             }
@@ -211,14 +232,10 @@
         }
 
         function getSelectedUploadDirectory() {
-            var radios = document.getElementsByClassName("directory-rdbtn-select-upload");
-            if (radios) {
-                for (var i = 0; i < radios.length; ++i) {
-                    if (radios[i].checked) {
-                        return {
-                            ID: radios[i].id
-                        }
-                    }
+            var radio = document.querySelector(".directory-rdbtn-select-upload:checked");
+            if (radio) {
+                return {
+                    ID: radio.id
                 }
             }
 
@@ -226,7 +243,14 @@
         }
 
         function getSelectedNode() {
-            return getSelectedUploadDirectory();
+            var radio = document.querySelector(".node-rdbtn-select-secondary:checked");
+            if (radio) {
+                return {
+                    ID: radio.id
+                }
+            }
+
+            return null;
         }
 
         function getVolume() {
@@ -267,6 +291,7 @@
     </div>
     <div>
         <button type="button" id="btnDelete">Delete</button>
+        <button type="button" id="btnMove">Move (*&lt;-*)</button>
     </div>
     <div>
         Volume:

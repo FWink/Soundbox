@@ -713,7 +713,7 @@ namespace Soundbox
                 //else: is updated anyways in SetWatermak
 
                 //update cache and database watermarks (this will call Update for parent)
-                SetWatermark(directory, newWatermark);
+                SetWatermark(file, newWatermark);
                 SetWatermark(oldParent, newWatermark);
 
                 //update our clients
