@@ -1162,15 +1162,16 @@ namespace Soundbox
         public async Task<ServerResult> SetVolumeSettingMax(int volumeSettingMax)
         {
             if (volumeSettingMax > Constants.VOLUME_MAX)
-                VolumeSettingMax = Constants.VOLUME_MAX;
+                volumeSettingMax = Constants.VOLUME_MAX;
             if (volumeSettingMax < Constants.VOLUME_MIN)
-                VolumeSettingMax = Constants.VOLUME_MIN;
+                volumeSettingMax = Constants.VOLUME_MIN;
 
             //get the last value of SetVolume. need that to adjust the current playback volume accordingly
             int currentVolumeSetting = await GetVolume();
 
             var preferences = ServiceProvider.GetService(typeof(IPreferencesProvider<int>)) as IPreferencesProvider<int>;
             await preferences.Set(PREFERENCES_KEY_VOLUME_MAX, volumeSettingMax);
+            this.VolumeSettingMax = volumeSettingMax;
 
             //update our clients
             GetHub().OnSettingMaxVolumeChanged(volumeSettingMax);

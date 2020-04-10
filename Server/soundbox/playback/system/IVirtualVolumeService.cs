@@ -24,7 +24,7 @@ namespace Soundbox
         /// Returns the current virtual system volume.
         /// </summary>
         /// <returns></returns>
-        Task<int> GetVolume();
+        Task<double> GetVolume();
 
         /// <summary>
         /// Register a new playback service instance with the volume service.

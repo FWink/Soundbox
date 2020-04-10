@@ -8,7 +8,7 @@ namespace Soundbox
     /// <summary>
     /// Database service for simple key-value storage.
     /// </summary>
-    interface IPreferencesProvider<T>
+    public interface IPreferencesProvider<T>
     {
         /// <summary>
         /// Stores a value.

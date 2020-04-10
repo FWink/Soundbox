@@ -10,8 +10,13 @@ namespace Soundbox.Test
     /// Implements a <see cref="IServiceProvider"/> for unit testing.
     /// Returned services may be fully functioning services from the Server projects, Mocks, or specialized test implementations (e.g. <see cref="IConfiguration"/> providing a test configuration).
     /// </summary>
-    class TestServiceProvider : IServiceProvider
+    class TestServiceProvider : IServiceProvider, IDisposable
     {
+        /// <summary>
+        /// List of all services that we created. They get disposed in <see cref="Dispose"/>
+        /// </summary>
+        protected ICollection<object> Services = new List<object>();
+
         /// <inheritdoc/>
         /// <exception cref="ServiceException"/>
         public object GetService(Type serviceType)
@@ -53,10 +58,25 @@ namespace Soundbox.Test
                     parameters[i] = GetService(parametersRequired[i].ParameterType);
                 }
 
-                return constructor.Invoke(parameters);
+                object service = constructor.Invoke(parameters);
+                Services.Add(service);
+
+                return service;
             }
 
             throw new BuildServiceException(serviceType);
+        }
+
+        public void Dispose()
+        {
+            foreach(var service in Services)
+            {
+                if(service is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+            Services.Clear();
         }
 
         public class ServiceException : Exception

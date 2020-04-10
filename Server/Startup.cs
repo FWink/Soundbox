@@ -19,12 +19,15 @@ namespace Soundbox
             services.AddSignalR().AddNewtonsoftJsonProtocol();
 
             services.AddSingleton<Soundbox>();
-            services.AddTransient(typeof(ISoundChainPlaybackService), typeof(DefaultSoundChainPlaybackService));
-            services.AddTransient(typeof(ISoundPlaybackService), typeof(SimpleDummySoundPlaybackService));
-            services.AddSingleton(typeof(IPreferencesProvider<int>), typeof(DummyIntPreferencesProvider));
-            services.AddSingleton(typeof(IVolumeService), typeof(DummyVolumeService));
-            services.AddSingleton(typeof(ISoundboxConfigProvider), typeof(DefaultSoundboxConfigProvider));
-            services.AddSingleton(typeof(IDatabaseProvider), typeof(LiteDbDatabaseProvider));
+            services.AddTransient<ISoundChainPlaybackService,DefaultSoundChainPlaybackService>();
+            services.AddTransient<ISoundPlaybackService,SimpleDummySoundPlaybackService>();
+            services.AddSingleton<IVolumeService,DummyVolumeService>();
+            services.AddSingleton<ISoundboxConfigProvider,DefaultSoundboxConfigProvider>();
+            services.AddSingleton<IDatabaseProvider,LiteDbDatabaseProvider>();
+
+            services.AddSingleton<LiteDbPreferencesDatabaseProvider>();
+            services.AddTransient<IPreferencesProvider<int>, LiteDbPreferencesProvider<int>>();
+            services.AddTransient<IPreferencesProvider<double>, LiteDbPreferencesProvider<double>>();
 
             services.AddControllers().AddNewtonsoftJson();
         }

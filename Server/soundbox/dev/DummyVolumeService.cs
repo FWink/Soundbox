@@ -7,17 +7,25 @@ namespace Soundbox
 {
     public class DummyVolumeService : IVolumeService
     {
-        protected double Volume = 100;
+        private const string PREFERENCES_KEY_VOLUME_DUMMY = "Soundbox.Volume.Dummy";
 
-        public Task<double> GetVolume()
+        private IPreferencesProvider<double> Preferences;
+
+        public DummyVolumeService(IPreferencesProvider<double> preferences)
         {
-            return Task.FromResult(Volume);
+            this.Preferences = preferences;
+        }
+
+        public async Task<double> GetVolume()
+        {
+            if (!await Preferences.Contains(PREFERENCES_KEY_VOLUME_DUMMY))
+                return Constants.VOLUME_MAX;
+            return await Preferences.Get(PREFERENCES_KEY_VOLUME_DUMMY);
         }
 
         public Task SetVolume(double volume)
         {
-            this.Volume = volume;
-            return Task.FromResult(true);
+            return Preferences.Set(PREFERENCES_KEY_VOLUME_DUMMY, volume);
         }
     }
 }

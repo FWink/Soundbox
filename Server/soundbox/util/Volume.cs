@@ -35,7 +35,7 @@ namespace Soundbox
             modifier -= Constants.VOLUME_MIN;
 
             if (modifier == 0)
-                return Constants.VOLUME_MIN;
+                return Constants.VOLUME_MAX;
 
             return (volumeModified * (Constants.VOLUME_MAX - Constants.VOLUME_MIN) / modifier) + Constants.VOLUME_MIN;
         }

@@ -47,7 +47,8 @@
 
                 connection.invoke("Edit", file);
             });
-            
+
+            //volume
             document.getElementById("btnVolumePlus").addEventListener("click", () => {
 
                 var volume = getVolume() + 5;
@@ -64,7 +65,25 @@
             connection.invoke("GetVolume").then(function (event) {
                 document.getElementById("spVolume").innerText = event;
             });
-            
+
+            //max volume
+            document.getElementById("btnMaxVolumePlus").addEventListener("click", () => {
+
+                var volume = getMaxVolume() + 5;
+                connection.invoke("SetSettingMaxVolume", volume);
+            });
+            document.getElementById("btnMaxVolumeMinus").addEventListener("click", () => {
+
+                var volume = getMaxVolume() - 5;
+                connection.invoke("SetSettingMaxVolume", volume);
+            });
+            connection.on("OnSettingMaxVolumeChanged", function (event) {
+                document.getElementById("spMaxVolume").innerText = event;
+            });
+            connection.invoke("GetSettingMaxVolume").then(function (event) {
+                document.getElementById("spMaxVolume").innerText = event;
+            });
+
             document.getElementById("btnDelete").addEventListener("click", () => {
 
                 connection.invoke("Delete", getSelectedNode());
@@ -211,11 +230,18 @@
         }
 
         function getVolume() {
+            return getVolumeFrom(document.getElementById("spVolume"));
+        }
+
+        function getMaxVolume() {
+            return getVolumeFrom(document.getElementById("spMaxVolume"));
+        }
+
+        function getVolumeFrom(el) {
             var volume = 100;
 
-            var span = document.getElementById("spVolume");
-            if (span && span.innerText) {
-                volume = parseInt(span.innerText);
+            if (el && el.innerText) {
+                volume = parseInt(el.innerText);
 
                 if (isNaN(volume))
                     volume = 100;
@@ -240,13 +266,19 @@
         <input type="button" id="btnModify" value="Edit" />
     </div>
     <div>
+        <button type="button" id="btnDelete">Delete</button>
+    </div>
+    <div>
         Volume:
         <span id="spVolume"></span>
         <button type="button" id="btnVolumePlus">+</button>
         <button type="button" id="btnVolumeMinus">-</button>
     </div>
     <div>
-        <button type="button" id="btnDelete">Delete</button>
+        Max Volume:
+        <span id="spMaxVolume"></span>
+        <button type="button" id="btnMaxVolumePlus">+</button>
+        <button type="button" id="btnMaxVolumeMinus">-</button>
     </div>
 </body>
 </html>
