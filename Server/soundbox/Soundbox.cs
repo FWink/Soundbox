@@ -508,7 +508,6 @@ namespace Soundbox
 
         #region "Directories"
 
-
         /// <summary>
         /// Creates a new directory in the given parent directory.
         /// </summary>
@@ -575,6 +574,172 @@ namespace Soundbox
 
         #endregion
 
+        #region "Edit"
+
+        /// <summary>
+        /// Edits the given file. These attributes are modified:<list type="bullet">
+        /// <item><see cref="SoundboxNode.Name"/></item>
+        /// <item><see cref="SoundboxNode.Tags"/></item>
+        /// </list>
+        /// </summary>
+        /// <param name="file"></param>
+        /// <returns></returns>
+        public async Task<FileResult> Edit(SoundboxNode file)
+        {
+            SoundboxNode localFile = GetCleanFile(file);
+            if(localFile == null)
+            {
+                return new FileResult(BaseResultStatus.INVALID_PARAMETER);
+            }
+            if(IsRootDirectory(localFile))
+            {
+                return new FileResult(FileResultStatus.ILLEGAL_FILE_EDIT_DENIED_ROOT);
+            }
+            if(!CheckUploadDisplayName(file.Name))
+            {
+                return new FileResult(FileResultStatus.INVALID_FILE_NAME);
+            }
+
+            //TODO check unique name in directory
+
+            try
+            {
+                DatabaseLock.EnterWriteLock();
+
+                //save previous watermark for event
+                Guid previousWatermark = GetSoundsTree().Watermark;
+                Guid newWatermark = Guid.NewGuid();
+
+                //modify our local file
+                localFile.Name = file.Name;
+                localFile.Tags = file.Tags;
+
+                //modify in database
+                //TODO async
+                Database.Update(localFile);
+
+                //update cache and database watermarks (this will call Update for parent)
+                SetWatermark(localFile, newWatermark);
+
+                //update our clients
+                GetHub().OnFileEvent(new SoundboxFileChangeEvent()
+                {
+                    Event = SoundboxFileChangeEvent.Type.MODIFIED,
+                    File = localFile,
+                    PreviousWatermark = previousWatermark
+                });
+
+                return new FileResult(BaseResultStatus.OK, localFile, previousWatermark);
+            }
+            catch(Exception ex)
+            {
+                Log(ex);
+                return new FileResult(BaseResultStatus.INTERNAL_SERVER_ERROR);
+            }
+            finally
+            {
+                DatabaseLock.ExitWriteLock();
+            }
+        }
+
+        #endregion
+
+        #region "Move"
+
+        /// <summary>
+        /// Moves a file to a new directory without performing an <see cref="Edit(SoundboxNode)"/>.
+        /// </summary>
+        /// <param name="file"></param>
+        /// <param name="directory">
+        /// Null: uses the root directory instead.
+        /// </param>
+        /// <returns></returns>
+        public async Task<FileResult> Move(SoundboxNode file, SoundboxDirectory directory)
+        {
+            file = GetCleanFile(file);
+            if(file == null)
+            {
+                return new FileResult(BaseResultStatus.INVALID_PARAMETER);
+            }
+            if(IsRootDirectory(file))
+            {
+                return new FileResult(FileResultStatus.ILLEGAL_FILE_EDIT_DENIED_ROOT);
+            }
+
+            if(directory == null)
+            {
+                directory = GetRootDirectory();
+            }
+            else
+            {
+                directory = GetCleanFile(directory);
+                if(directory == null)
+                {
+                    return new FileResult(BaseResultStatus.INVALID_PARAMETER);
+                }
+            }
+
+            if(file == directory)
+            {
+                //not possible
+                return new FileResult(FileResultStatus.MOVE_TARGET_INVALID);
+            }
+            if(file.ParentDirectory == directory)
+            {
+                //no change
+                return new FileResult(BaseResultStatus.OK_NO_CHANGE);
+            }
+
+            try
+            {
+                DatabaseLock.EnterWriteLock();
+
+                //save previous watermark for event
+                Guid previousWatermark = GetSoundsTree().Watermark;
+                Guid newWatermark = Guid.NewGuid();
+
+                //move in cache
+                SoundboxDirectory oldParent = file.ParentDirectory;
+                oldParent.Children.Remove(file);
+
+                directory.AddChild(file);
+
+                //update file in database
+                if(!(file is SoundboxDirectory))
+                {
+                    //TODO async
+                    Database.Update(file);
+                }
+                //else: is updated anyways in SetWatermak
+
+                //update cache and database watermarks (this will call Update for parent)
+                SetWatermark(directory, newWatermark);
+                SetWatermark(oldParent, newWatermark);
+
+                //update our clients
+                GetHub().OnFileEvent(new SoundboxFileMoveEvent()
+                {
+                    Event = SoundboxFileChangeEvent.Type.MOVED,
+                    File = file,
+                    FromDirectory = oldParent,
+                    PreviousWatermark = previousWatermark
+                });
+
+                return new FileResult(BaseResultStatus.OK, file, previousWatermark, oldParent);
+            }
+            catch(Exception ex)
+            {
+                Log(ex);
+                return new FileResult(BaseResultStatus.INTERNAL_SERVER_ERROR);
+            }
+            finally
+            {
+                DatabaseLock.ExitWriteLock();
+            }
+        }
+
+        #endregion
+
         /// <summary>
         /// Fetches the given file (received from a client) from our local database/file system/cache by matching against its <see cref="SoundboxNode.ID"/>.
         /// This is required before pretty much any operation is done on a file received from a client in order to prevent injections of various kinds.
@@ -615,6 +780,20 @@ namespace Soundbox
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Returns true if the given node is the root directory. Thus it may not be edited/moved/deleted.
+        /// </summary>
+        /// <param name="file"></param>
+        /// <returns></returns>
+        protected bool IsRootDirectory(SoundboxNode file)
+        {
+            if(file is SoundboxDirectory directory)
+            {
+                return directory.IsRootDirectory();
+            }
+            return false;
         }
 
         #endregion
@@ -811,7 +990,7 @@ namespace Soundbox
         /// <summary>
         /// Maximum volume modifier. Is multiplied with the volume given in <see cref="SetVolume(int)"/>.
         /// </summary>
-        protected int VolumeSettingMax = -1;
+        protected int VolumeSettingMax = int.MinValue;
 
         protected const string PREFERENCES_KEY_VOLUME_MAX = "Soundbox.Volume.Max";
 
@@ -820,9 +999,13 @@ namespace Soundbox
         /// </summary>
         /// <param name="volume"></param>
         /// <returns></returns>
-        public async Task SetVolume(int volume)
+        public async Task<ServerResult> SetVolume(int volume)
         {
-            //TODO check value, error
+            if (volume > Constants.VOLUME_MAX)
+                volume = Constants.VOLUME_MAX;
+            if (volume < Constants.VOLUME_MIN)
+                volume = Constants.VOLUME_MIN;
+
             double volumeMax = await GetVolumeSettingMax();
             double volumeModified = Volume.GetVolume(volume, volumeMax);
 
@@ -831,6 +1014,8 @@ namespace Soundbox
 
             //update our clients
             GetHub().OnVolumeChanged(volume);
+
+            return new ServerResult(BaseResultStatus.OK);
         }
 
         /// <summary>
@@ -853,7 +1038,7 @@ namespace Soundbox
         /// <returns></returns>
         public async Task<int> GetVolumeSettingMax()
         {
-            if(VolumeSettingMax >= 0)
+            if(VolumeSettingMax != int.MinValue)
             {
                 return VolumeSettingMax;
             }
@@ -862,16 +1047,16 @@ namespace Soundbox
             if(await preferences.Contains(PREFERENCES_KEY_VOLUME_MAX))
             {
                 int setting = await preferences.Get(PREFERENCES_KEY_VOLUME_MAX);
-                if (setting > 100)
-                    setting = 100;
-                else if (setting < 0)
-                    setting = 0;
+                if (setting > Constants.VOLUME_MAX)
+                    setting = Constants.VOLUME_MAX;
+                else if (setting < Constants.VOLUME_MIN)
+                    setting = Constants.VOLUME_MIN;
 
                 VolumeSettingMax = setting;
             }
             else
             {
-                VolumeSettingMax = 100;
+                VolumeSettingMax = Constants.VOLUME_MAX;
             }
 
             return VolumeSettingMax;
@@ -881,9 +1066,13 @@ namespace Soundbox
         /// Adjusts <see cref="VolumeSettingMax"/>. Playback volume of all active sounds is adjusted immediately.
         /// </summary>
         /// <seealso cref="GetVolumeSettingMax"/>
-        public async Task SetVolumeSettingMax(int volumeSettingMax)
+        public async Task<ServerResult> SetVolumeSettingMax(int volumeSettingMax)
         {
-            //TODO check value, error
+            if (volumeSettingMax > Constants.VOLUME_MAX)
+                VolumeSettingMax = Constants.VOLUME_MAX;
+            if (volumeSettingMax < Constants.VOLUME_MIN)
+                VolumeSettingMax = Constants.VOLUME_MIN;
+
             //get the last value of SetVolume. need that to adjust the current playback volume accordingly
             int currentVolumeSetting = await GetVolume();
 
@@ -894,6 +1083,8 @@ namespace Soundbox
             GetHub().OnSettingMaxVolumeChanged(volumeSettingMax);
             //update the current playback volume
             await SetVolume(currentVolumeSetting);
+
+            return new ServerResult(BaseResultStatus.OK);
         }
 
         #endregion

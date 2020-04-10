@@ -27,12 +27,30 @@ namespace Soundbox
         }
 
         /// <summary>
+        /// For move operations: the directory where <see cref="File"/> came from.
+        /// </summary>
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public SoundboxDirectory FromDirectory
+        {
+            get;
+        }
+
+        /// <summary>
         /// For errors
         /// </summary>
         /// <param name="status"></param>
         public FileResult(ResultStatus status) : this(status, null, null) { }
 
-        public FileResult(ResultStatus status, SoundboxNode file, Guid? previousWatermark) : base(status)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="status"></param>
+        /// <param name="file"></param>
+        /// <param name="previousWatermark"></param>
+        /// <param name="fromDirectory">
+        /// See <see cref="SoundboxFileMoveEvent.FromDirectory"/>
+        /// </param>
+        public FileResult(ResultStatus status, SoundboxNode file, Guid? previousWatermark, SoundboxDirectory fromDirectory = null) : base(status)
         {
             File = file;
             PreviousWatermark = previousWatermark;

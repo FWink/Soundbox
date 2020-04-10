@@ -17,7 +17,10 @@ namespace Soundbox
         /// <returns></returns>
         public static double GetVolume(double volume, double modifier)
         {
-            return volume * modifier / 100;
+            volume -= Constants.VOLUME_MIN;
+            modifier -= Constants.VOLUME_MIN;
+
+            return (volume * modifier / (Constants.VOLUME_MAX - Constants.VOLUME_MIN)) + Constants.VOLUME_MIN;
         }
 
         /// <summary>
@@ -28,7 +31,13 @@ namespace Soundbox
         /// <returns></returns>
         public static double GetVolumeOriginal(double volumeModified, double modifier)
         {
-            return volumeModified * 100 / modifier;
+            volumeModified -= Constants.VOLUME_MIN;
+            modifier -= Constants.VOLUME_MIN;
+
+            if (modifier == 0)
+                return Constants.VOLUME_MIN;
+
+            return (volumeModified * (Constants.VOLUME_MAX - Constants.VOLUME_MIN) / modifier) + Constants.VOLUME_MIN;
         }
     }
 }

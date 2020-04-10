@@ -38,26 +38,52 @@
                 };
                 connection.invoke("MakeDirectory", directory, getSelectedUploadDirectory());
             });
+
+            document.getElementById("btnModify").addEventListener("click", () => {
+                const name = document.getElementById("inpModifyName").value;
+
+                const file = getSelectedUploadDirectory();
+                file.Name = name;
+
+                connection.invoke("Edit", file);
+            });
+            
+            document.getElementById("btnVolumePlus").addEventListener("click", () => {
+
+                var volume = getVolume() + 5;
+                connection.invoke("SetVolume", volume);
+            });
+            document.getElementById("btnVolumeMinus").addEventListener("click", () => {
+
+                var volume = getVolume() - 5;
+                connection.invoke("SetVolume", volume);
+            });
+            connection.on("OnVolumeChanged", function (event) {
+                document.getElementById("spVolume").innerText = event;
+            });
+            connection.invoke("GetVolume").then(function (event) {
+                document.getElementById("spVolume").innerText = event;
+            });
         });
 
         function FileUpload(file, directory) {
-          const reader = new FileReader();  
-          const xhr = new XMLHttpRequest();
-          this.xhr = xhr;
-  
-          const self = this;
-          //this.xhr.upload.addEventListener("progress", function(e) {
-          //      if (e.lengthComputable) {
-          //        const percentage = Math.round((e.loaded * 100) / e.total);
-          //        self.ctrl.update(percentage);
-          //      }
-          //    }, false);
-  
-          //xhr.upload.addEventListener("load", function(e){
-          //        self.ctrl.update(100);
-          //        const canvas = self.ctrl.ctx.canvas;
-          //        canvas.parentNode.removeChild(canvas);
-          //}, false);
+            const reader = new FileReader();
+            const xhr = new XMLHttpRequest();
+            this.xhr = xhr;
+
+            const self = this;
+            //this.xhr.upload.addEventListener("progress", function(e) {
+            //      if (e.lengthComputable) {
+            //        const percentage = Math.round((e.loaded * 100) / e.total);
+            //        self.ctrl.update(percentage);
+            //      }
+            //    }, false);
+
+            //xhr.upload.addEventListener("load", function(e){
+            //        self.ctrl.update(100);
+            //        const canvas = self.ctrl.ctx.canvas;
+            //        canvas.parentNode.removeChild(canvas);
+            //}, false);
 
             var sound = {
                 Name: file.name,
@@ -71,14 +97,14 @@
 
             xhr.open("POST", url);
 
-          //xhr.open("POST", "http://demos.hacks.mozilla.org/paul/demos/resources/webservices/devnull.php");
+            //xhr.open("POST", "http://demos.hacks.mozilla.org/paul/demos/resources/webservices/devnull.php");
             //xhr.overrideMimeType('text/plain; charset=x-user-defined-binary');
             xhr.setRequestHeader("Content-Type", "application/octet-stream");
             xhr.setRequestHeader("Content-Length", file.size);
-          reader.onload = function(evt) {
-            xhr.send(evt.target.result);
-          };
-          reader.readAsArrayBuffer(file);
+            reader.onload = function (evt) {
+                xhr.send(evt.target.result);
+            };
+            reader.readAsArrayBuffer(file);
         }
 
         function reloadSoundList() {
@@ -175,6 +201,20 @@
             return null;
         }
 
+        function getVolume() {
+            var volume = 100;
+
+            var span = document.getElementById("spVolume");
+            if (span && span.innerText) {
+                volume = parseInt(span.innerText);
+
+                if (isNaN(volume))
+                    volume = 100;
+            }
+
+            return volume;
+        }
+
     </script>
     <div id="lstSounds"></div>
     <input type="button" id="btnStop" value="Stop" />
@@ -185,6 +225,16 @@
     <div>
         <input type="text" id="inpNewDirectory" />
         <input type="button" id="btnNewDirectory" value="New Directory" />
+    </div>
+    <div>
+        <input type="text" id="inpModifyName" />
+        <input type="button" id="btnModify" value="Edit" />
+    </div>
+    <div>
+        Volume:
+        <span id="spVolume"></span>
+        <button type="button" id="btnVolumePlus">+</button>
+        <button type="button" id="btnVolumeMinus">-</button>
     </div>
 </body>
 </html>

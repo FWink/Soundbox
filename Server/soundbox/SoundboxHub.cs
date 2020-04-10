@@ -34,6 +34,7 @@ namespace Soundbox
         /// </returns>
         public async Task<ICollection<SoundboxNode>> GetSounds(SoundboxDirectory directory = null, bool recursive = false)
         {
+            //TODO
             return new SoundboxNode[]
             {
                 GetSoundbox().GetSoundsTree()
@@ -126,22 +127,21 @@ namespace Soundbox
         /// </summary>
         /// <param name="file"></param>
         /// <returns></returns>
-        public async Task Edit(SoundboxNode file)
+        public Task<FileResult> Edit(SoundboxNode file)
         {
-
+            return GetSoundbox().Edit(file);
         }
 
         /// <summary>
         /// Moves a file to a new directory. There is no <see cref="Edit(SoundboxNode)"/> performed on the given file.<br/>
-        /// If the given directory's <see cref="SoundboxNode.ID"/> is <see cref="SoundboxNode.ID_DEFAULT_NEW_ITEM"/> then it is created first via <see cref="MakeDirectory(SoundboxDirectory, SoundboxDirectory)"/>.
-        /// In that case <see cref="SoundboxNode.ParentDirectory"/> will be used as the new directory's parent. If it is null then the root directory is used.
+        /// If the given directory is null then the root directory is used.
         /// </summary>
         /// <param name="file"></param>
         /// <param name="directory"></param>
         /// <returns></returns>
-        public async Task Move(SoundboxNode file, SoundboxDirectory directory)
+        public Task<FileResult> Move(SoundboxNode file, SoundboxDirectory directory)
         {
-
+            return GetSoundbox().Move(file, directory);
         }
 
         /// <summary>
