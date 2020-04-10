@@ -9,7 +9,7 @@ namespace Soundbox
     /// <summary>
     /// Represents either a <see cref="Sound"/> or a <see cref="SoundboxDirectory"/>. Or more formally: represents a node in a tree of files.
     /// </summary>
-    public class SoundboxFile
+    public class SoundboxNode
     {
         public Guid ID;
         /// <summary>
@@ -83,7 +83,7 @@ namespace Soundbox
 
         public override bool Equals(object obj)
         {
-            return obj is SoundboxFile file &&
+            return obj is SoundboxNode file &&
                    ID.Equals(file.ID);
         }
 
@@ -92,12 +92,12 @@ namespace Soundbox
             return HashCode.Combine(ID);
         }
 
-        public static bool operator ==(SoundboxFile left, SoundboxFile right)
+        public static bool operator ==(SoundboxNode left, SoundboxNode right)
         {
-            return EqualityComparer<SoundboxFile>.Default.Equals(left, right);
+            return EqualityComparer<SoundboxNode>.Default.Equals(left, right);
         }
 
-        public static bool operator !=(SoundboxFile left, SoundboxFile right)
+        public static bool operator !=(SoundboxNode left, SoundboxNode right)
         {
             return !(left == right);
         }

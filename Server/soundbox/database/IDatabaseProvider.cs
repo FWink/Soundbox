@@ -20,30 +20,30 @@ namespace Soundbox
 
         /// <summary>
         /// Inserts the given file or directory into the database.<br/>
-        /// The file's <see cref="SoundboxFile.ParentDirectory"/> and <see cref="SoundboxDirectory.Children"/>
+        /// The file's <see cref="SoundboxNode.ParentDirectory"/> and <see cref="SoundboxDirectory.Children"/>
         /// are only inserted as references.
         /// </summary>
         /// <param name="file"></param>
         /// <returns></returns>
-        Task Insert(SoundboxFile file);
+        Task Insert(SoundboxNode file);
 
         /// <summary>
-        /// Updates the given file or directory (identified by its unique <see cref="SoundboxFile.ID/>).<br/>
-        /// The file's <see cref="SoundboxFile.ParentDirectory"/> and <see cref="SoundboxDirectory.Children"/>
+        /// Updates the given file or directory (identified by its unique <see cref="SoundboxNode.ID/>).<br/>
+        /// The file's <see cref="SoundboxNode.ParentDirectory"/> and <see cref="SoundboxDirectory.Children"/>
         /// themselves are not updaed, only the references on the given file are updated if required.
         /// </summary>
         /// <param name="file"></param>
         /// <returns></returns>
-        Task Update(SoundboxFile file);
+        Task Update(SoundboxNode file);
 
         /// <summary>
-        /// Deletes the given file or directory (identified by its unique <see cref="SoundboxFile.ID/>).<br/>
+        /// Deletes the given file or directory (identified by its unique <see cref="SoundboxNode.ID/>).<br/>
         /// If <paramref name="file"/> is a directory, then all its content is deleted recursively.<br/>
         /// May or may not remove the file from the parent's <see cref="SoundboxDirectory.Children"/>.
-        /// The caller should call <see cref="Update(SoundboxFile)"/> on the directory.
+        /// The caller should call <see cref="Update(SoundboxNode)"/> on the directory.
         /// </summary>
         /// <param name="file"></param>
         /// <returns></returns>
-        Task Delete(SoundboxFile file);
+        Task Delete(SoundboxNode file);
     }
 }

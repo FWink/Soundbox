@@ -11,7 +11,7 @@ namespace Soundbox
     /// Singleton <see cref="IDatabaseProvider"/> that uses the NoSQL <see cref="LiteDB"/> database.<br/>
     /// The file tree is implemented on a single "collection" (<see cref="LiteDB.ILiteCollection{T}"/>)
     /// containing both <see cref="Sound"/>s and <see cref="SoundboxDirectory"/>s.
-    /// Thus that collection references itself twice via <see cref="SoundboxFile.ParentDirectory"/> and <see cref="SoundboxDirectory.Children"/>.
+    /// Thus that collection references itself twice via <see cref="SoundboxNode.ParentDirectory"/> and <see cref="SoundboxDirectory.Children"/>.
     /// </summary>
     public class LiteDbDatabaseProvider : IDatabaseProvider, IDisposable
     {
@@ -25,7 +25,7 @@ namespace Soundbox
             //prepare the bson document mapper
             BsonMapper = new BsonMapper();
             BsonMapper.IncludeFields = true;
-            BsonMapper.Entity<SoundboxFile>()
+            BsonMapper.Entity<SoundboxNode>()
                 .Id(f => f.ID, false);
 
             BsonMapper.Entity<SoundboxDirectory>()
@@ -49,9 +49,9 @@ namespace Soundbox
             }
         }
 
-        protected ILiteCollection<SoundboxFile> GetSoundsCollection()
+        protected ILiteCollection<SoundboxNode> GetSoundsCollection()
         {
-            return Database.GetCollection<SoundboxFile>(COLLECTION_SOUNDS_NAME);
+            return Database.GetCollection<SoundboxNode>(COLLECTION_SOUNDS_NAME);
         }
 
         public Task<SoundboxDirectory> Get()
@@ -77,11 +77,11 @@ namespace Soundbox
 
         /// <summary>
         /// Iterates through all of the directory's <see cref="SoundboxDirectory.Children"/>
-        /// and loads the content of child directories via <see cref="LoadDirectory(ILiteCollection{SoundboxFile}, SoundboxDirectory)"/>.
+        /// and loads the content of child directories via <see cref="LoadDirectory(ILiteCollection{SoundboxNode}, SoundboxDirectory)"/>.
         /// </summary>
         /// <param name="collection"></param>
         /// <param name="directory"></param>
-        private void LoadDirectoryChildren(ILiteCollection<SoundboxFile> collection, SoundboxDirectory directory)
+        private void LoadDirectoryChildren(ILiteCollection<SoundboxNode> collection, SoundboxDirectory directory)
         {
             foreach (var child in directory.Children)
             {
@@ -99,7 +99,7 @@ namespace Soundbox
         /// </summary>
         /// <param name="collection"></param>
         /// <param name="directory"></param>
-        private void LoadDirectory(ILiteCollection<SoundboxFile> collection, SoundboxDirectory directory)
+        private void LoadDirectory(ILiteCollection<SoundboxNode> collection, SoundboxDirectory directory)
         {
             //at this point we already have the children's IDs loaded
             //still it's probably most efficient to just load the directory's children again
@@ -108,7 +108,7 @@ namespace Soundbox
                 .Where(f => f.ID == directory.ID)
                 .Select(BsonExpression.Create("children"));
 
-            ICollection<SoundboxFile> children = new List<SoundboxFile>();
+            ICollection<SoundboxNode> children = new List<SoundboxNode>();
             foreach(var childRow in resultChildren.ToEnumerable())
             {
                 if (childRow == null)
@@ -120,7 +120,7 @@ namespace Soundbox
 
                 foreach(var bsonChild in bsonChildren.AsArray)
                 {
-                    var child = this.BsonMapper.Deserialize<SoundboxFile>(bsonChild);
+                    var child = this.BsonMapper.Deserialize<SoundboxNode>(bsonChild);
                     //test for dangling references:
                     if(child.ID == default)
                     {
@@ -138,7 +138,7 @@ namespace Soundbox
             LoadDirectoryChildren(collection, directory);
         }
 
-        public Task Insert(SoundboxFile file)
+        public Task Insert(SoundboxNode file)
         {
             GetSoundsCollection().Insert(file);
             //TODO interface commit
@@ -146,7 +146,7 @@ namespace Soundbox
             return Task.FromResult(true);
         }
 
-        public Task Update(SoundboxFile file)
+        public Task Update(SoundboxNode file)
         {
             GetSoundsCollection().Update(file);
             //TODO interface commit
@@ -154,7 +154,7 @@ namespace Soundbox
             return Task.FromResult(true);
         }
 
-        public Task Delete(SoundboxFile file)
+        public Task Delete(SoundboxNode file)
         {
             DeleteRecursive(GetSoundsCollection(), file);
             //TODO interface commit
@@ -166,7 +166,7 @@ namespace Soundbox
         /// Deletes the given file and all its descendants if it is a <see cref="SoundboxDirectory"/>.
         /// </summary>
         /// <param name="file"></param>
-        protected void DeleteRecursive(ILiteCollection<SoundboxFile> collection, SoundboxFile file)
+        protected void DeleteRecursive(ILiteCollection<SoundboxNode> collection, SoundboxNode file)
         {
             if(file is SoundboxDirectory directory)
             {

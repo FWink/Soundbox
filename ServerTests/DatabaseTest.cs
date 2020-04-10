@@ -95,7 +95,7 @@ namespace Soundbox.Test
             {
                 System.IO.Directory.Delete(config.GetRootDirectory(), true);
             }
-            catch (DirectoryNotFoundException ex)
+            catch (DirectoryNotFoundException)
             {
                 //ignore
             }
@@ -116,7 +116,7 @@ namespace Soundbox.Test
 
         /// <summary>
         /// Compares two files for equality by comparing all their fields and properties.<br/>
-        /// Performs only a shallow comparison for <see cref="SoundboxDirectory.Children"/> and <see cref="SoundboxFile.ParentDirectory"/>
+        /// Performs only a shallow comparison for <see cref="SoundboxDirectory.Children"/> and <see cref="SoundboxNode.ParentDirectory"/>
         /// unless otherwise specified via <paramref name="deepCompareParents"/> and <paramref name="deepCompareChildren"/>.
         /// </summary>
         /// <param name="file1"></param>
@@ -125,7 +125,7 @@ namespace Soundbox.Test
         /// True: Returns false if the given files are the same object (<see cref="Object.ReferenceEquals(object, object)"/>).
         /// </param>
         /// <returns></returns>
-        protected bool Compare(SoundboxFile file1, SoundboxFile file2, bool compareDistinct = false, bool deepCompareParents = false, bool deepCompareChildren = false)
+        protected bool Compare(SoundboxNode file1, SoundboxNode file2, bool compareDistinct = false, bool deepCompareParents = false, bool deepCompareChildren = false)
         {
             if (Object.ReferenceEquals(file1, file2))
             {
@@ -168,7 +168,7 @@ namespace Soundbox.Test
 
                 if(deepCompareChildren)
                 {
-                    var children2 = new List<SoundboxFile>(dir2.Children);
+                    var children2 = new List<SoundboxNode>(dir2.Children);
                     foreach(var child1 in dir1.Children)
                     {
                         if (children2.Find(child2 => Compare(child1, child2, compareDistinct: compareDistinct, deepCompareParents: true, deepCompareChildren: true)) == null)
@@ -185,6 +185,19 @@ namespace Soundbox.Test
         #region "Tests"
 
         #region "Insert/Get"
+
+        /// <summary>
+        /// Template for <see cref="TestInsertDirectoryGet"/> and related tests: compares the given root with the root queried from the database.
+        /// </summary>
+        /// <param name="directoryRoot"></param>
+        /// <returns></returns>
+        public async Task TestInsertGet_Template(SoundboxDirectory directoryRoot)
+        {
+            //get from database
+            var fromDb = await Database.Get();
+
+            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+        }
 
         /// <summary>
         /// Prepares the database for <see cref="TestInsertDirectoryGet"/> and returns the root directory that has been inserted.
@@ -210,17 +223,13 @@ namespace Soundbox.Test
         }
 
         /// <summary>
-        /// Inserts a single directory (the root directory) via <see cref="IDatabaseProvider.Insert(SoundboxFile)"/> and fetches it afterwards with <see cref="IDatabaseProvider.Get"/>.
+        /// Inserts a single directory (the root directory) via <see cref="IDatabaseProvider.Insert(SoundboxNode)"/> and fetches it afterwards with <see cref="IDatabaseProvider.Get"/>.
         /// </summary>
         [TestMethod]
         public async Task TestInsertDirectoryGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectoryGet_Prepare();
-
-            //get
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true));
+            await TestInsertGet_Template(directoryRoot);
         }
 
         /// <summary>
@@ -262,11 +271,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectorySoundGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectorySoundGet_Prepare();
-
-            //get
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Template(directoryRoot);
         }
 
         /// <summary>
@@ -307,11 +312,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectoryDirectoryGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectoryDirectoryGet_Prepare();
-
-            //get
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Template(directoryRoot);
         }
 
         /// <summary>
@@ -360,11 +361,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectoryDirectorySoundGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectoryDirectorySoundGet_Prepare();
-
-            //get
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Template(directoryRoot);
         }
 
         /// <summary>
@@ -413,11 +410,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectorySoundDirectoryGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectorySoundDirectoryGet_Prepare();
-
-            //get
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Template(directoryRoot);
         }
 
         #endregion
@@ -425,19 +418,28 @@ namespace Soundbox.Test
         #region "Insert/Reopen/Get"
 
         /// <summary>
-        /// Inserts a single directory (the root directory) via <see cref="IDatabaseProvider.Insert(SoundboxFile)"/> and fetches it afterwards with <see cref="IDatabaseProvider.Get"/>.<br/>
+        /// Template for <see cref="TestInsertDirectoryReopenGet"/> and related tests: closes and reopens the database, then compares the given root with the root queried from the database.
+        /// </summary>
+        /// <param name="directoryRoot"></param>
+        /// <returns></returns>
+        public async Task TestInsertGet_Reopen_Template(SoundboxDirectory directoryRoot)
+        {
+            //reopen and get
+            GetDatabase();
+            var fromDb = await Database.Get();
+
+            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+        }
+
+        /// <summary>
+        /// Inserts a single directory (the root directory) via <see cref="IDatabaseProvider.Insert(SoundboxNode)"/> and fetches it afterwards with <see cref="IDatabaseProvider.Get"/>.<br/>
         /// Closes and re-opens the database before fetching.
         /// </summary>
         [TestMethod]
         public async Task TestInsertDirectoryReopenGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectoryGet_Prepare();
-
-            //reopen and get
-            GetDatabase();
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true));
+            await TestInsertGet_Reopen_Template(directoryRoot);
         }
 
         /// <summary>
@@ -449,12 +451,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectorySoundReopenGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectorySoundGet_Prepare();
-
-            //reopen and get
-            GetDatabase();
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Reopen_Template(directoryRoot);
         }
 
         /// <summary>
@@ -466,12 +463,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectoryDirectoryReopenGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectoryDirectoryGet_Prepare();
-
-            //reopen and get
-            GetDatabase();
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Reopen_Template(directoryRoot);
         }
 
         /// <summary>
@@ -483,12 +475,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectoryDirectorySoundReopenGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectoryDirectorySoundGet_Prepare();
-
-            //reopen and get
-            GetDatabase();
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Reopen_Template(directoryRoot);
         }
 
         /// <summary>
@@ -500,12 +487,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectorySoundDirectoryReopenGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectorySoundDirectoryGet_Prepare();
-
-            //reopen and get
-            GetDatabase();
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Reopen_Template(directoryRoot);
         }
 
         #endregion
@@ -513,23 +495,32 @@ namespace Soundbox.Test
         #region "Insert/Crash/Get"
 
         /// <summary>
-        /// Inserts a single directory (the root directory) via <see cref="IDatabaseProvider.Insert(SoundboxFile)"/> and fetches it afterwards with <see cref="IDatabaseProvider.Get"/>.<br/>
-        /// Crashes and re-opens the database before fetching.
+        /// Template for <see cref="TestInsertDirectoryCrashGet"/> and related tests: crashes and reopens the database, then compares the given root with the root queried from the database.
         /// </summary>
-        [TestMethod]
-        public async Task TestInsertDirectoryCrashGet()
+        /// <param name="directoryRoot"></param>
+        /// <returns></returns>
+        protected async Task TestInsertGet_Crash_Template(SoundboxDirectory directoryRoot)
         {
-            SoundboxDirectory directoryRoot = await TestInsertDirectoryGet_Prepare();
-
             //crash and get
-            if(!ReopenDatabaseCrash())
+            if (!ReopenDatabaseCrash())
             {
                 Assert.Inconclusive("Database provider cannot crash on purpose");
                 return;
             }
             var fromDb = await Database.Get();
 
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true));
+            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+        }
+
+        /// <summary>
+        /// Inserts a single directory (the root directory) via <see cref="IDatabaseProvider.Insert(SoundboxNode)"/> and fetches it afterwards with <see cref="IDatabaseProvider.Get"/>.<br/>
+        /// Crashes and re-opens the database before fetching.
+        /// </summary>
+        [TestMethod]
+        public async Task TestInsertDirectoryCrashGet()
+        {
+            SoundboxDirectory directoryRoot = await TestInsertDirectoryGet_Prepare();
+            await TestInsertGet_Crash_Template(directoryRoot);
         }
 
         /// <summary>
@@ -541,16 +532,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectorySoundCrashGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectorySoundGet_Prepare();
-
-            //crash and get
-            if (!ReopenDatabaseCrash())
-            {
-                Assert.Inconclusive("Database provider cannot crash on purpose");
-                return;
-            }
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Crash_Template(directoryRoot);
         }
 
         /// <summary>
@@ -562,16 +544,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectoryDirectoryCrashGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectoryDirectoryGet_Prepare();
-
-            //crash and get
-            if (!ReopenDatabaseCrash())
-            {
-                Assert.Inconclusive("Database provider cannot crash on purpose");
-                return;
-            }
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Crash_Template(directoryRoot);
         }
 
         /// <summary>
@@ -583,16 +556,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectoryDirectorySoundCrashGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectoryDirectorySoundGet_Prepare();
-
-            //crash and get
-            if (!ReopenDatabaseCrash())
-            {
-                Assert.Inconclusive("Database provider cannot crash on purpose");
-                return;
-            }
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Crash_Template(directoryRoot);
         }
 
         /// <summary>
@@ -604,16 +568,7 @@ namespace Soundbox.Test
         public async Task TestInsertDirectorySoundDirectoryCrashGet()
         {
             SoundboxDirectory directoryRoot = await TestInsertDirectorySoundDirectoryGet_Prepare();
-
-            //crash and get
-            if (!ReopenDatabaseCrash())
-            {
-                Assert.Inconclusive("Database provider cannot crash on purpose");
-                return;
-            }
-            var fromDb = await Database.Get();
-
-            Assert.IsTrue(Compare(directoryRoot, fromDb, compareDistinct: true, deepCompareParents: true, deepCompareChildren: true));
+            await TestInsertGet_Crash_Template(directoryRoot);
         }
 
         #endregion

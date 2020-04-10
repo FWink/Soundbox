@@ -32,14 +32,14 @@ namespace Soundbox
 
         /// <summary>
         /// Absolute path of the soundbox's root directory.
-        /// This is not however the root directory of <see cref="SoundboxFile"/>s
+        /// This is not however the root directory of <see cref="SoundboxNode"/>s
         /// (see <see cref="SoundsRootDirectory"/>).
         /// </summary>
         protected string BaseDirectory;
 
         /// <summary>
-        /// The root directory for the entire <see cref="SoundboxFile"/> tree.
-        /// I.e. all <see cref="SoundboxFile.AbsoluteFileName"/>s are given relative to this path.
+        /// The root directory for the entire <see cref="SoundboxNode"/> tree.
+        /// I.e. all <see cref="SoundboxNode.AbsoluteFileName"/>s are given relative to this path.
         /// </summary>
         protected string SoundsRootDirectory;
 
@@ -79,7 +79,7 @@ namespace Soundbox
         protected SoundboxDirectory SoundsRoot;
 
         /// <summary>
-        /// Returns the root directory of the <see cref="SoundboxFile"/> tree.
+        /// Returns the root directory of the <see cref="SoundboxNode"/> tree.
         /// </summary>
         /// <returns></returns>
         public SoundboxDirectory GetSoundsTree()
@@ -128,7 +128,7 @@ namespace Soundbox
         /// </summary>
         /// <param name="file"></param>
         /// <param name="watermark"></param>
-        protected void SetWatermark(SoundboxFile file, Guid watermark)
+        protected void SetWatermark(SoundboxNode file, Guid watermark)
         {
             if (file is SoundboxDirectory)
                 SetWatermark(file as SoundboxDirectory, watermark);
@@ -169,7 +169,7 @@ namespace Soundbox
         }
 
         /// <summary>
-        /// Returns the root directory of the <see cref="SoundboxFile"/> tree by reading it from disk.
+        /// Returns the root directory of the <see cref="SoundboxNode"/> tree by reading it from disk.
         /// "From disk" in this context can mean reading the actual file tree or querying a local database if any.
         /// In any case all files in the returned tree have been verified to exist.
         /// </summary>
@@ -222,9 +222,9 @@ namespace Soundbox
         /// </summary>
         /// <param name="directory"></param>
         /// <returns></returns>
-        private ICollection<SoundboxFile> ReadDirectoryFromDisk(string directory)
+        private ICollection<SoundboxNode> ReadDirectoryFromDisk(string directory)
         {
-            ICollection<SoundboxFile> soundboxFiles = new List<SoundboxFile>();
+            ICollection<SoundboxNode> soundboxFiles = new List<SoundboxNode>();
 
             List<string> files = new List<string>();
             try
@@ -241,7 +241,7 @@ namespace Soundbox
 
             foreach(var file in files)
             {
-                SoundboxFile soundboxFile;
+                SoundboxNode SoundboxNode;
 
                 if(Directory.Exists(file))
                 {
@@ -257,14 +257,14 @@ namespace Soundbox
                         Log(e);
                     }
 
-                    soundboxFile = soundboxDirectory;
+                    SoundboxNode = soundboxDirectory;
                 }
                 else if(IsSoundFile(file))
                 {
                     //is sound
                     Sound sound = new Sound();
 
-                    soundboxFile = sound;
+                    SoundboxNode = sound;
                 }
                 else
                 {
@@ -272,14 +272,14 @@ namespace Soundbox
                 }
 
                 //set random ID when reading new file from disk
-                soundboxFile.ID = Guid.NewGuid();
-                soundboxFile.FileName = MakeRelativePath(file, directory);
-                soundboxFile.AbsoluteFileName = MakeRelativePath(file, SoundsRootDirectory);
+                SoundboxNode.ID = Guid.NewGuid();
+                SoundboxNode.FileName = MakeRelativePath(file, directory);
+                SoundboxNode.AbsoluteFileName = MakeRelativePath(file, SoundsRootDirectory);
 
                 //TODO: format name
-                soundboxFile.Name = soundboxFile.FileName;
+                SoundboxNode.Name = SoundboxNode.FileName;
 
-                soundboxFiles.Add(soundboxFile);
+                soundboxFiles.Add(SoundboxNode);
             }
 
             return soundboxFiles;
@@ -411,9 +411,9 @@ namespace Soundbox
         /// <param name="bytes"></param>
         /// <param name="sound">
         /// Information used when adding the new sound:<list type="bullet">
-        /// <item><see cref="SoundboxFile.Name"/></item>
-        /// <item><see cref="SoundboxFile.FileName"/></item>
-        /// <item><see cref="SoundboxFile.Tags"/></item>
+        /// <item><see cref="SoundboxNode.Name"/></item>
+        /// <item><see cref="SoundboxNode.FileName"/></item>
+        /// <item><see cref="SoundboxNode.Tags"/></item>
         /// </list>
         /// </param>
         /// <param name="directory">
@@ -533,7 +533,7 @@ namespace Soundbox
         /// </summary>
         /// <param name="newFile"></param>
         /// <param name="parent"></param>
-        private FileResult UploadOnNewFile(SoundboxFile newFile, SoundboxDirectory parent)
+        private FileResult UploadOnNewFile(SoundboxNode newFile, SoundboxDirectory parent)
         {
             try
             {
@@ -573,11 +573,23 @@ namespace Soundbox
         /// </summary>
         /// <param name="sound"></param>
         /// <returns></returns>
-        protected string MakeFileNameUnique(SoundboxFile file)
+        protected string MakeFileNameUnique(SoundboxNode file)
         {
             //"my_sound.mp3" -> "my_sound_MYUID.mp3"
             string name = GetFileNamePure(file.FileName);
             return Regex.Replace(file.FileName, "^" + Regex.Escape(name), name + "_" + file.ID.ToString());
+        }
+
+        /// <summary>
+        /// Returns the file path where the given sound should be stored on disk. The file name is guaranteed to be unique in its directory.
+        /// </summary>
+        /// <param name="sound"></param>
+        /// <returns>
+        /// File path relative to our root directory (<see cref="SoundboxNode.AbsoluteFileName"/>).
+        /// </returns>
+        protected string GetSoundFileName(Sound sound)
+        {
+            return string.Format("{0}_{1}.{2}", NormalizeFileName(sound.Name), sound.ID.ToString(), GetFileType(sound.FileName));
         }
 
         /// <summary>
@@ -616,7 +628,7 @@ namespace Soundbox
         }
 
         /// <summary>
-        /// Checks if the given <see cref="SoundboxFile.Name"/> is valid (e.g. is not empty...)
+        /// Checks if the given <see cref="SoundboxNode.Name"/> is valid (e.g. is not empty...)
         /// </summary>
         /// <param name="displayName"></param>
         /// <returns></returns>
@@ -663,8 +675,8 @@ namespace Soundbox
         /// </summary>
         /// <param name="directory">
         /// Information used when adding the new sound:<list type="bullet">
-        /// <item><see cref="SoundboxFile.Name"/></item>
-        /// <item><see cref="SoundboxFile.Tags"/></item>
+        /// <item><see cref="SoundboxNode.Name"/></item>
+        /// <item><see cref="SoundboxNode.Tags"/></item>
         /// </list>
         /// </param>
         /// <param name="parent">
@@ -704,7 +716,7 @@ namespace Soundbox
             //TODO check display name unique in parent
 
             directory.ID = Guid.NewGuid();
-            directory.Children = new List<SoundboxFile>();
+            directory.Children = new List<SoundboxNode>();
             directory.ParentDirectory = parent;
             directory.FileName = NormalizeFileName(directory.Name);
             directory.FileName = MakeFileNameUnique(directory);
@@ -763,13 +775,13 @@ namespace Soundbox
         #endregion
 
         /// <summary>
-        /// Fetches the given file (received from a client) from our local database/file system/cache by matching against its <see cref="SoundboxFile.ID"/>.
+        /// Fetches the given file (received from a client) from our local database/file system/cache by matching against its <see cref="SoundboxNode.ID"/>.
         /// This is required before pretty much any operation is done on a file received from a client in order to prevent injections of various kinds.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="file"></param>
         /// <returns></returns>
-        private T GetCleanFile<T>(T file) where T : SoundboxFile
+        private T GetCleanFile<T>(T file) where T : SoundboxNode
         {
             if (file == null)
                 return null;
@@ -784,7 +796,7 @@ namespace Soundbox
         /// <param name="directory"></param>
         /// <param name="file"></param>
         /// <returns></returns>
-        private SoundboxFile GetCleanFileFromDirectory(SoundboxDirectory directory, SoundboxFile file)
+        private SoundboxNode GetCleanFileFromDirectory(SoundboxDirectory directory, SoundboxNode file)
         {
             if (directory.ID == file.ID)
                 return directory;

@@ -12,7 +12,7 @@ namespace Soundbox
     public class FileResult : ServerResult
     {
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public SoundboxFile File
+        public SoundboxNode File
         {
             get;
         }
@@ -32,7 +32,7 @@ namespace Soundbox
         /// <param name="status"></param>
         public FileResult(ResultStatus status) : this(status, null, null) { }
 
-        public FileResult(ResultStatus status, SoundboxFile file, Guid? previousWatermark) : base(status)
+        public FileResult(ResultStatus status, SoundboxNode file, Guid? previousWatermark) : base(status)
         {
             File = file;
             PreviousWatermark = previousWatermark;

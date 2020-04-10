@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 
 namespace Soundbox
 {
-    public class SoundboxDirectory : SoundboxFile
+    public class SoundboxDirectory : SoundboxNode
     {
-        public ICollection<SoundboxFile> Children = new List<SoundboxFile>();
+        public ICollection<SoundboxNode> Children = new List<SoundboxNode>();
 
         /// <summary>
         /// Unique watermark that gets updated whenever a change in <see cref="Children"/>
@@ -22,13 +22,13 @@ namespace Soundbox
         /// </summary>
         public Guid Watermark;
 
-        public void AddChild(SoundboxFile file)
+        public void AddChild(SoundboxNode file)
         {
             this.Children.Add(file);
             file.ParentDirectory = this;
         }
 
-        public void AddChildren(IEnumerable<SoundboxFile> files)
+        public void AddChildren(IEnumerable<SoundboxNode> files)
         {
             foreach(var child in files)
             {

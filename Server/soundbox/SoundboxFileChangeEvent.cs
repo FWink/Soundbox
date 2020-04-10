@@ -7,13 +7,13 @@ namespace Soundbox
 {
     public class SoundboxFileChangeEvent
     {
-        public SoundboxFile File;
+        public SoundboxNode File;
         public Type Event;
         /// <summary>
         /// The root <see cref="SoundboxDirectory.Watermark"/> before the change occurred.
         /// This can be used by clients to check if they missed any event.<br/>
         /// Note: the current watermark can be retrieved from <see cref="File"/>;
-        /// either directly because it is a <see cref="SoundboxDirectory"/> or from its <see cref="SoundboxFile.ParentDirectory"/>.
+        /// either directly because it is a <see cref="SoundboxDirectory"/> or from its <see cref="SoundboxNode.ParentDirectory"/>.
         /// </summary>
         public Guid PreviousWatermark;
 

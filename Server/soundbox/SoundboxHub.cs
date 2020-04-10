@@ -32,9 +32,9 @@ namespace Soundbox
         /// The directory's content. If null is passed for the <paramref name="directory"/> (requesting the root directory) and <paramref name="recursive"/> is false
         /// then only the root directory is returned without its children. That can be utilized to quickly verify whether the local sound list is up-to-date by checking the root directory's <see cref="SoundboxDirectory.Watermark"/>.
         /// </returns>
-        public async Task<ICollection<SoundboxFile>> GetSounds(SoundboxDirectory directory = null, bool recursive = false)
+        public async Task<ICollection<SoundboxNode>> GetSounds(SoundboxDirectory directory = null, bool recursive = false)
         {
-            return new SoundboxFile[]
+            return new SoundboxNode[]
             {
                 GetSoundbox().GetSoundsTree()
             };
@@ -113,33 +113,33 @@ namespace Soundbox
         /// </summary>
         /// <param name="file"></param>
         /// <returns></returns>
-        public async Task Delete(SoundboxFile file)
+        public async Task Delete(SoundboxNode file)
         {
 
         }
 
         /// <summary>
         /// Edits the given file. Currently these attributes are affected:<list type="bullet">
-        /// <item><see cref="SoundboxFile.Name"/></item>
-        /// <item><see cref="SoundboxFile.Tags"/></item>
+        /// <item><see cref="SoundboxNode.Name"/></item>
+        /// <item><see cref="SoundboxNode.Tags"/></item>
         /// </list>
         /// </summary>
         /// <param name="file"></param>
         /// <returns></returns>
-        public async Task Edit(SoundboxFile file)
+        public async Task Edit(SoundboxNode file)
         {
 
         }
 
         /// <summary>
-        /// Moves a file to a new directory. There is no <see cref="Edit(SoundboxFile)"/> performed on the given file.<br/>
-        /// If the given directory's <see cref="SoundboxFile.ID"/> is <see cref="SoundboxFile.ID_DEFAULT_NEW_ITEM"/> then it is created first via <see cref="MakeDirectory(SoundboxDirectory, SoundboxDirectory)"/>.
-        /// In that case <see cref="SoundboxFile.ParentDirectory"/> will be used as the new directory's parent. If it is null then the root directory is used.
+        /// Moves a file to a new directory. There is no <see cref="Edit(SoundboxNode)"/> performed on the given file.<br/>
+        /// If the given directory's <see cref="SoundboxNode.ID"/> is <see cref="SoundboxNode.ID_DEFAULT_NEW_ITEM"/> then it is created first via <see cref="MakeDirectory(SoundboxDirectory, SoundboxDirectory)"/>.
+        /// In that case <see cref="SoundboxNode.ParentDirectory"/> will be used as the new directory's parent. If it is null then the root directory is used.
         /// </summary>
         /// <param name="file"></param>
         /// <param name="directory"></param>
         /// <returns></returns>
-        public async Task Move(SoundboxFile file, SoundboxDirectory directory)
+        public async Task Move(SoundboxNode file, SoundboxDirectory directory)
         {
 
         }
@@ -149,8 +149,8 @@ namespace Soundbox
         /// </summary>
         /// <param name="directory">
         /// Information used when adding the new sound:<list type="bullet">
-        /// <item><see cref="SoundboxFile.Name"/></item>
-        /// <item><see cref="SoundboxFile.Tags"/></item>
+        /// <item><see cref="SoundboxNode.Name"/></item>
+        /// <item><see cref="SoundboxNode.Tags"/></item>
         /// </list>
         /// </param>
         /// <param name="parent">
