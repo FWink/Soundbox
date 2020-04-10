@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,6 +10,7 @@ namespace Soundbox
     public class SoundboxFileChangeEvent
     {
         public SoundboxNode File;
+        [JsonConverter(typeof(StringEnumConverter))]
         public Type Event;
         /// <summary>
         /// The root <see cref="SoundboxDirectory.Watermark"/> before the change occurred.

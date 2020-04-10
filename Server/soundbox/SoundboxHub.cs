@@ -114,9 +114,9 @@ namespace Soundbox
         /// </summary>
         /// <param name="file"></param>
         /// <returns></returns>
-        public async Task Delete(SoundboxNode file)
+        public Task<FileResult> Delete(SoundboxNode file)
         {
-
+            return GetSoundbox().Delete(file);
         }
 
         /// <summary>

@@ -42,7 +42,7 @@
             document.getElementById("btnModify").addEventListener("click", () => {
                 const name = document.getElementById("inpModifyName").value;
 
-                const file = getSelectedUploadDirectory();
+                const file = getSelectedNode();
                 file.Name = name;
 
                 connection.invoke("Edit", file);
@@ -63,6 +63,11 @@
             });
             connection.invoke("GetVolume").then(function (event) {
                 document.getElementById("spVolume").innerText = event;
+            });
+            
+            document.getElementById("btnDelete").addEventListener("click", () => {
+
+                connection.invoke("Delete", getSelectedNode());
             });
         });
 
@@ -201,6 +206,10 @@
             return null;
         }
 
+        function getSelectedNode() {
+            return getSelectedUploadDirectory();
+        }
+
         function getVolume() {
             var volume = 100;
 
@@ -235,6 +244,9 @@
         <span id="spVolume"></span>
         <button type="button" id="btnVolumePlus">+</button>
         <button type="button" id="btnVolumeMinus">-</button>
+    </div>
+    <div>
+        <button type="button" id="btnDelete">Delete</button>
     </div>
 </body>
 </html>

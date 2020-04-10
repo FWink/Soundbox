@@ -38,7 +38,7 @@ namespace Soundbox
             //open the database file
             var databaseDirectory = config.GetRootDirectory() + "database/";
             Directory.CreateDirectory(databaseDirectory);
-            Database = new LiteDatabase(databaseDirectory + "lite.db", BsonMapper);
+            Database = new LiteDatabase(databaseDirectory + "lite_sounds.db", BsonMapper);
         }
 
         public void Dispose()

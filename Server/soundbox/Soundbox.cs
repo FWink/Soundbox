@@ -740,6 +740,99 @@ namespace Soundbox
 
         #endregion
 
+        #region "Delete"
+
+        /// <summary>
+        /// Deletes a file or directory. If <paramref name="file"/> is a directory, then its entire content is deleted as well.
+        /// </summary>
+        /// <param name="file"></param>
+        /// <returns></returns>
+        public async Task<FileResult> Delete(SoundboxNode file)
+        {
+            file = GetCleanFile(file);
+            if(file == null)
+            {
+                return new FileResult(BaseResultStatus.INVALID_PARAMETER);
+            }
+            if(IsRootDirectory(file))
+            {
+                return new FileResult(FileResultStatus.ILLEGAL_FILE_EDIT_DENIED_ROOT);
+            }
+
+            try
+            {
+                DatabaseLock.EnterWriteLock();
+
+                //save previous watermark for event
+                Guid previousWatermark = GetSoundsTree().Watermark;
+                Guid newWatermark = Guid.NewGuid();
+
+                //remove from cache
+                file.ParentDirectory.Children.Remove(file);
+                //do not remove the parent from the file: need it for the client event
+
+                //remove from disk
+                DeleteRecursive(file);
+
+                //delete from database
+                //TODO async
+                Database.Delete(file);
+
+                //update cache and database watermarks (this will call Update for parent)
+                SetWatermark(file, newWatermark);
+
+                //update our clients
+                GetHub().OnFileEvent(new SoundboxFileChangeEvent()
+                {
+                    Event = SoundboxFileChangeEvent.Type.DELETED,
+                    File = file,
+                    PreviousWatermark = previousWatermark
+                });
+
+                return new FileResult(BaseResultStatus.OK, file, previousWatermark);
+            }
+            catch(Exception ex)
+            {
+                Log(ex);
+                return new FileResult(BaseResultStatus.INTERNAL_SERVER_ERROR);
+            }
+            finally
+            {
+                DatabaseLock.ExitWriteLock();
+            }
+        }
+
+        /// <summary>
+        /// Deletes the given node from disk.
+        /// Deletes the node itself it is a <see cref="SoundboxFile"/>.
+        /// Deletes all its content recursively if it is a <see cref="SoundboxDirectory"/>.
+        /// </summary>
+        /// <param name="node"></param>
+        protected void DeleteRecursive(SoundboxNode node)
+        {
+            if(node is SoundboxFile file)
+            {
+                try
+                {
+                    File.Delete(GetAbsoluteFileName(file));
+                }
+                catch(Exception ex)
+                {
+                    Log(ex);
+                    //continue deleting
+                }
+            }
+            else if(node is SoundboxDirectory directory)
+            {
+                foreach(var child in directory.Children)
+                {
+                    DeleteRecursive(child);
+                }
+            }
+        }
+
+        #endregion
+
         /// <summary>
         /// Fetches the given file (received from a client) from our local database/file system/cache by matching against its <see cref="SoundboxNode.ID"/>.
         /// This is required before pretty much any operation is done on a file received from a client in order to prevent injections of various kinds.
