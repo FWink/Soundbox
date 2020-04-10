@@ -142,10 +142,6 @@ namespace Soundbox.Test
 
             if (file1.Name != file2.Name)
                 return false;
-            if (file1.FileName != file2.FileName)
-                return false;
-            if (file1.AbsoluteFileName != file2.AbsoluteFileName)
-                return false;
             if (file1.IconUrl != file2.IconUrl)
                 return false;
             if (file1.ParentDirectory != file2.ParentDirectory)
@@ -154,6 +150,14 @@ namespace Soundbox.Test
                 return false;
             if (!file1.Tags.CollectionsEqual(file2.Tags))
                 return false;
+
+            if ((file1 is SoundboxFile nodeFile1) && (file2 is SoundboxFile nodeFile2))
+            {
+                if (nodeFile1.FileName != nodeFile2.FileName)
+                    return false;
+                if (nodeFile1.AbsoluteFileName != nodeFile2.AbsoluteFileName)
+                    return false;
+            }
 
             if ((file1 is Sound sound1) && (file2 is Sound sound2))
             {
@@ -209,8 +213,6 @@ namespace Soundbox.Test
             {
                 ID = Guid.NewGuid(),
                 Name = "Name",
-                FileName = "FileName",
-                AbsoluteFileName = "AbsoluteFileName",
                 IconUrl = "IconUrl",
                 Watermark = Guid.NewGuid(),
                 Tags = new string[] { "1", "2", "3" }
@@ -289,8 +291,6 @@ namespace Soundbox.Test
             {
                 ID = Guid.NewGuid(),
                 Name = "Name",
-                FileName = "FileName",
-                AbsoluteFileName = "AbsoluteFileName",
                 IconUrl = "IconUrl",
                 Tags = new string[] { "1", "2", "3" }
             };

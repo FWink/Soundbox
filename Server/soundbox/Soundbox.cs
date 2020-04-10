@@ -39,7 +39,7 @@ namespace Soundbox
 
         /// <summary>
         /// The root directory for the entire <see cref="SoundboxNode"/> tree.
-        /// I.e. all <see cref="SoundboxNode.AbsoluteFileName"/>s are given relative to this path.
+        /// I.e. all <see cref="SoundboxFile.AbsoluteFileName"/>s are given relative to this path.
         /// </summary>
         protected string SoundsRootDirectory;
 
@@ -90,7 +90,6 @@ namespace Soundbox
 
                 if (SoundsRoot == null)
                 {
-                    //SoundsRoot = ReadTreeFromDisk();
                     //TODO async
                     var task = Database.Get();
                     SoundsRoot = task.Result;
@@ -166,154 +165,6 @@ namespace Soundbox
         protected string GetTempDirectory()
         {
             return BaseDirectory + "tmp/";
-        }
-
-        /// <summary>
-        /// Returns the root directory of the <see cref="SoundboxNode"/> tree by reading it from disk.
-        /// "From disk" in this context can mean reading the actual file tree or querying a local database if any.
-        /// In any case all files in the returned tree have been verified to exist.
-        /// </summary>
-        /// <returns></returns>
-        public SoundboxDirectory ReadTreeFromDisk()
-        {
-            try
-            {
-                DatabaseLock.EnterReadLock();
-
-                SoundboxDirectory rootDirectory = new SoundboxDirectory();
-                rootDirectory.ID = Guid.NewGuid();
-                rootDirectory.AddChildren(ReadDirectoryFromDisk(SoundsRootDirectory));
-
-                //read from disk => set new watermark for entire tree
-                SetWatermarkDescendants(rootDirectory, Guid.NewGuid());
-
-                return rootDirectory;
-            }
-            finally
-            {
-                DatabaseLock.ExitReadLock();
-            }
-        }
-
-        /// <summary>
-        /// Recursively sets the given history watermark in the given directory and all its <b>descendants</b>.<br/>
-        /// Usually this should only be used when fetching an entirely new directory from disk as opposed from our database.
-        /// In other case any change in a file/directory would recursively update the <b>ancestors</b> instead.
-        /// </summary>
-        /// <param name="directory"></param>
-        /// <param name="watermark"></param>
-        private void SetWatermarkDescendants(SoundboxDirectory directory, Guid watermark)
-        {
-            directory.Watermark = watermark;
-
-            foreach (var child in directory.Children)
-            {
-                var childDirectory = child as SoundboxDirectory;
-
-                if (childDirectory != null)
-                {
-                    SetWatermarkDescendants(childDirectory, watermark);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Recursively reads the given directory's content from the hard disk.
-        /// </summary>
-        /// <param name="directory"></param>
-        /// <returns></returns>
-        private ICollection<SoundboxNode> ReadDirectoryFromDisk(string directory)
-        {
-            ICollection<SoundboxNode> soundboxFiles = new List<SoundboxNode>();
-
-            List<string> files = new List<string>();
-            try
-            {
-                files.AddRange(Directory.GetFiles(directory));
-                files.AddRange(Directory.GetDirectories(directory));
-            }
-            catch(Exception e)
-            {
-                //directory does not exist => treat as empty
-                Log(e);
-                return soundboxFiles;
-            }
-
-            foreach(var file in files)
-            {
-                SoundboxNode SoundboxNode;
-
-                if(Directory.Exists(file))
-                {
-                    //is directory
-                    SoundboxDirectory soundboxDirectory = new SoundboxDirectory();
-
-                    try
-                    {
-                        soundboxDirectory.AddChildren(ReadDirectoryFromDisk(file));
-                    }
-                    catch(Exception e)
-                    {
-                        Log(e);
-                    }
-
-                    SoundboxNode = soundboxDirectory;
-                }
-                else if(IsSoundFile(file))
-                {
-                    //is sound
-                    Sound sound = new Sound();
-
-                    SoundboxNode = sound;
-                }
-                else
-                {
-                    continue;
-                }
-
-                //set random ID when reading new file from disk
-                SoundboxNode.ID = Guid.NewGuid();
-                SoundboxNode.FileName = MakeRelativePath(file, directory);
-                SoundboxNode.AbsoluteFileName = MakeRelativePath(file, SoundsRootDirectory);
-
-                //TODO: format name
-                SoundboxNode.Name = SoundboxNode.FileName;
-
-                soundboxFiles.Add(SoundboxNode);
-            }
-
-            return soundboxFiles;
-        }
-
-        /// <summary>
-        /// Checks whether the given file is a sound file of a supported type.
-        /// </summary>
-        /// <param name="file"></param>
-        /// <returns></returns>
-        private bool IsSoundFile(string file)
-        {
-            //TODO
-            return File.Exists(file);
-        }
-
-        /// <summary>
-        /// Returns the file's path relative to the given directory
-        /// (returns the file's name).
-        /// </summary>
-        /// <param name="file"></param>
-        /// <param name="directory"></param>
-        /// <returns></returns>
-        protected string MakeRelativePath(string file, string directory)
-        {
-            string path = Path.GetRelativePath(directory, file);
-            if (path.StartsWith(@"./"))
-                path = Regex.Replace(path, @"^\./", "");
-            else if (path.StartsWith(@".\"))
-                path = Regex.Replace(path, @"^\.\\", "");
-            else if (path.StartsWith(@"\"))
-                path = Regex.Replace(path, @"^\\", "");
-
-            return path;
         }
 
         /// <summary>
@@ -412,7 +263,7 @@ namespace Soundbox
         /// <param name="sound">
         /// Information used when adding the new sound:<list type="bullet">
         /// <item><see cref="SoundboxNode.Name"/></item>
-        /// <item><see cref="SoundboxNode.FileName"/></item>
+        /// <item><see cref="SoundboxFile.FileName"/></item>
         /// <item><see cref="SoundboxNode.Tags"/></item>
         /// </list>
         /// </param>
@@ -458,9 +309,7 @@ namespace Soundbox
 
             sound.ID = Guid.NewGuid();
             sound.ParentDirectory = directory;
-            sound.FileName = NormalizeFileName(sound.FileName);
-            sound.FileName = MakeFileNameUnique(sound);
-            sound.UpdateAbsoluteFileName();
+            MakeSoundFileName(sound);
 
             ResultStatus status = BaseResultStatus.INTERNAL_SERVER_ERROR;
 
@@ -569,27 +418,17 @@ namespace Soundbox
         }
 
         /// <summary>
-        /// Creates a unique file name for the given file upon upload. It is guaranteed to be globally unique.
+        /// Creates file path for the given sound where it should be stored on disk. The file name is guaranteed to be unique in its directory.<br/>
+        /// <see cref="SoundboxFile.FileName"/> and <see cref="SoundboxFile.AbsoluteFileName"/> are updated on the given object.
         /// </summary>
         /// <param name="sound"></param>
-        /// <returns></returns>
-        protected string MakeFileNameUnique(SoundboxNode file)
+        protected void MakeSoundFileName(Sound sound)
         {
-            //"my_sound.mp3" -> "my_sound_MYUID.mp3"
-            string name = GetFileNamePure(file.FileName);
-            return Regex.Replace(file.FileName, "^" + Regex.Escape(name), name + "_" + file.ID.ToString());
-        }
-
-        /// <summary>
-        /// Returns the file path where the given sound should be stored on disk. The file name is guaranteed to be unique in its directory.
-        /// </summary>
-        /// <param name="sound"></param>
-        /// <returns>
-        /// File path relative to our root directory (<see cref="SoundboxNode.AbsoluteFileName"/>).
-        /// </returns>
-        protected string GetSoundFileName(Sound sound)
-        {
-            return string.Format("{0}_{1}.{2}", NormalizeFileName(sound.Name), sound.ID.ToString(), GetFileType(sound.FileName));
+            //make a unique name
+            sound.FileName = string.Format("{0}_{1}.{2}", NormalizeFileName(sound.Name), sound.ID.ToString(), GetFileType(sound.FileName));
+            //sound is in root directory
+            //TODO at some point we might want to organize our sounds in different directories (for performance reasons mostly, when opening the sound directory in explorer)
+            sound.AbsoluteFileName = sound.FileName;
         }
 
         /// <summary>
@@ -690,11 +529,6 @@ namespace Soundbox
                 //error
                 return new FileResult(BaseResultStatus.INVALID_PARAMETER);
             }
-            if(!CheckUploadDirectoryName(directory.Name))
-            {
-                //error
-                return new FileResult(FileResultStatus.INVALID_FILE_NAME);
-            }
             if(!CheckUploadDisplayName(directory.Name))
             {
                 //error
@@ -718,9 +552,6 @@ namespace Soundbox
             directory.ID = Guid.NewGuid();
             directory.Children = new List<SoundboxNode>();
             directory.ParentDirectory = parent;
-            directory.FileName = NormalizeFileName(directory.Name);
-            directory.FileName = MakeFileNameUnique(directory);
-            directory.UpdateAbsoluteFileName();
 
             ResultStatus status = BaseResultStatus.INTERNAL_SERVER_ERROR;
 
@@ -728,28 +559,11 @@ namespace Soundbox
             {
                 DatabaseLock.EnterWriteLock();
 
-                //create the directory on disk
-                try
-                {
-                    Directory.CreateDirectory(GetAbsoluteFileName(directory));
-                }
-                catch
-                {
-                    status = FileResultStatus.IO_ERROR;
-                    throw;
-                }
-
                 return UploadOnNewFile(directory, parent);
             }
             catch (Exception ex)
             {
                 Log(ex);
-                //delete on error
-                try
-                {
-                    Directory.Delete(GetAbsoluteFileName(directory), false);
-                }
-                catch { }
             }
             finally
             {
@@ -757,19 +571,6 @@ namespace Soundbox
             }
 
             return new FileResult(status);
-        }
-
-        /// <summary>
-        /// Checks if the given file name of a new directory is valid (e.g. is not empty...)
-        /// </summary>
-        /// <param name="fileName"></param>
-        /// <returns></returns>
-        protected bool CheckUploadDirectoryName(string fileName)
-        {
-            if (string.IsNullOrWhiteSpace(fileName))
-                return false;
-
-            return true;
         }
 
         #endregion

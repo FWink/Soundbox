@@ -20,7 +20,7 @@ namespace Soundbox
         /// <param name="sound">
         /// Information used when adding the new sound:<list type="bullet">
         /// <item><see cref="SoundboxNode.Name"/></item>
-        /// <item><see cref="SoundboxNode.FileName"/></item>
+        /// <item><see cref="SoundboxFile.FileName"/></item>
         /// <item><see cref="SoundboxNode.Tags"/></item>
         /// </list>
         /// </param>

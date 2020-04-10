@@ -17,14 +17,6 @@ namespace Soundbox
         /// </summary>
         public string Name;
         /// <summary>
-        /// File name in directory
-        /// </summary>
-        public string FileName;
-        /// <summary>
-        /// Absolute file name (in the soundbox context, i.e. path is relative to soundbox root directory)
-        /// </summary>
-        public string AbsoluteFileName;
-        /// <summary>
         /// Parent directory. Not-null
         /// TODO during serialization make sure we get a depth of 1 here.
         /// TODO Don't serialize this for persistent storage
@@ -59,26 +51,6 @@ namespace Soundbox
         public bool IsNew()
         {
             return ID == ID_DEFAULT_NEW_ITEM;
-        }
-
-        /// <summary>
-        /// Updates the <see cref="AbsoluteFileName"/> after a change to <see cref="FileName"/> or <see cref="ParentDirectory"/>.
-        /// </summary>
-        public void UpdateAbsoluteFileName()
-        {
-            if(ParentDirectory != null && !ParentDirectory.IsRootDirectory())
-            {
-                string absoluteFileName = ParentDirectory.AbsoluteFileName;
-                if (!absoluteFileName.EndsWith("/"))
-                    absoluteFileName += "/";
-                absoluteFileName += FileName;
-
-                this.AbsoluteFileName = absoluteFileName;
-            }
-            else
-            {
-                this.AbsoluteFileName = this.FileName;
-            }
         }
 
         public override bool Equals(object obj)

@@ -38,7 +38,7 @@ namespace Soundbox
 
         public bool IsRootDirectory()
         {
-            return ParentDirectory == null || string.IsNullOrWhiteSpace(FileName) || string.IsNullOrWhiteSpace(AbsoluteFileName);
+            return ParentDirectory == null;
         }
     }
 }
