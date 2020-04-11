@@ -39,10 +39,10 @@ namespace Soundbox
         /// </returns>
         public bool SanityCheck()
         {
-            if (Volume < 1)
+            if (Volume <= Constants.VOLUME_MIN)
                 return false;
-            if (Volume > 100)
-                Volume = 100;
+            if (Volume > Constants.VOLUME_MAX)
+                Volume = Constants.VOLUME_MAX;
             if (!double.IsNormal(SpeedPitch))
                 return false;
             return true;
@@ -51,7 +51,7 @@ namespace Soundbox
         public static PlaybackOptions Default()
         {
             var options = new PlaybackOptions();
-            options.Volume = 100;
+            options.Volume = Constants.VOLUME_MAX;
             options.SpeedPitch = 1;
             options.ChainDelayMs = 0;
             options.ChainDelayClip = false;

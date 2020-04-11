@@ -42,7 +42,7 @@ namespace Soundbox.Playback.IrrKlang
 
             this.Sound = sound;
             var engine = await EngineProvider.GetSoundEngine();
-            Playback = engine.Play2D(context.GetAbsoluteFileName(sound.Sound));
+            Playback = engine.Play2D(context.GetAbsoluteFileName(sound.Sound), false, true);
 
             //set playback options
             Playback.PlaybackSpeed = (float)sound.Options.SpeedPitch;
@@ -54,13 +54,21 @@ namespace Soundbox.Playback.IrrKlang
             if (virtualVolumeService != null)
             {
                 volume = Volume.GetVolume(volume, await virtualVolumeService.GetVolume());
-                virtualVolumeService.RegisterSoundPlayback(this);
             }
 
             Playback.Volume = Utilities.GetVolume(volume);
 
             //notify when the sound is done playing
             Playback.setSoundStopEventReceiver(this);
+
+            //setup is done: start playing the sound
+            Playback.Paused = false;
+
+            //register with the virtual volume service once the sound starts playing (prevent unlikely race condition)
+            if(virtualVolumeService != null)
+            {
+                virtualVolumeService.RegisterSoundPlayback(this);
+            }
         }
 
         public void SetVolume(double volume)

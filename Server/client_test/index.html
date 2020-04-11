@@ -8,93 +8,100 @@
 <body>
     <script type="text/javascript">
 
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl("/api/v1/ws")
-            .build();
+        var connection;
 
-        connection.start().then(() => {
-            console.log("connected");
+        document.addEventListener("DOMContentLoaded", () => {
 
-            reloadSoundList();
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl("/api/v1/ws")
+                .build();
 
-            connection.on("OnFileEvent", () => {
+            connection.start().then(() => {
+                console.log("connected");
+
                 reloadSoundList();
+
+                connection.on("OnFileEvent", () => {
+                    reloadSoundList();
+                });
+
+                document.getElementById("btnStop").addEventListener("click", () => {
+                    connection.invoke("Stop");
+                });
+
+                document.getElementById("btnUpload").addEventListener("click", () => {
+                    const file = document.getElementById("inpFileUpload").files[0];
+                    new FileUpload(file, getSelectedUploadDirectory());
+                });
+
+                document.getElementById("btnNewDirectory").addEventListener("click", () => {
+                    const name = document.getElementById("inpNewDirectory").value;
+                    const directory =
+                    {
+                        Name: name
+                    };
+                    connection.invoke("MakeDirectory", directory, getSelectedUploadDirectory());
+                });
+
+                document.getElementById("btnModify").addEventListener("click", () => {
+                    const name = document.getElementById("inpModifyName").value;
+
+                    const file = getSelectedNode();
+                    file.Name = name;
+
+                    connection.invoke("Edit", file);
+                });
+
+                //volume
+                document.getElementById("btnVolumePlus").addEventListener("click", () => {
+
+                    var volume = getVolume() + 5;
+                    connection.invoke("SetVolume", volume);
+                });
+                document.getElementById("btnVolumeMinus").addEventListener("click", () => {
+
+                    var volume = getVolume() - 5;
+                    connection.invoke("SetVolume", volume);
+                });
+                connection.on("OnVolumeChanged", function (event) {
+                    document.getElementById("spVolume").innerText = event;
+                });
+                connection.invoke("GetVolume").then(function (event) {
+                    document.getElementById("spVolume").innerText = event;
+                });
+
+                //max volume
+                document.getElementById("btnMaxVolumePlus").addEventListener("click", () => {
+
+                    var volume = getMaxVolume() + 5;
+                    connection.invoke("SetSettingMaxVolume", volume);
+                });
+                document.getElementById("btnMaxVolumeMinus").addEventListener("click", () => {
+
+                    var volume = getMaxVolume() - 5;
+                    connection.invoke("SetSettingMaxVolume", volume);
+                });
+                connection.on("OnSettingMaxVolumeChanged", function (event) {
+                    document.getElementById("spMaxVolume").innerText = event;
+                });
+                connection.invoke("GetSettingMaxVolume").then(function (event) {
+                    document.getElementById("spMaxVolume").innerText = event;
+                });
+
+                //delete
+                document.getElementById("btnDelete").addEventListener("click", () => {
+
+                    connection.invoke("Delete", getSelectedNode());
+                });
+
+                //move
+                document.getElementById("btnMove").addEventListener("click", () => {
+
+                    connection.invoke("Move", getSelectedNode(), getSelectedUploadDirectory());
+                });
             });
 
-            document.getElementById("btnStop").addEventListener("click", () => {
-                connection.invoke("Stop");
-            });
-
-            document.getElementById("btnUpload").addEventListener("click", () => {
-                const file = document.getElementById("inpFileUpload").files[0];
-                new FileUpload(file, getSelectedUploadDirectory());
-            });
-
-            document.getElementById("btnNewDirectory").addEventListener("click", () => {
-                const name = document.getElementById("inpNewDirectory").value;
-                const directory =
-                {
-                    Name: name
-                };
-                connection.invoke("MakeDirectory", directory, getSelectedUploadDirectory());
-            });
-
-            document.getElementById("btnModify").addEventListener("click", () => {
-                const name = document.getElementById("inpModifyName").value;
-
-                const file = getSelectedNode();
-                file.Name = name;
-
-                connection.invoke("Edit", file);
-            });
-
-            //volume
-            document.getElementById("btnVolumePlus").addEventListener("click", () => {
-
-                var volume = getVolume() + 5;
-                connection.invoke("SetVolume", volume);
-            });
-            document.getElementById("btnVolumeMinus").addEventListener("click", () => {
-
-                var volume = getVolume() - 5;
-                connection.invoke("SetVolume", volume);
-            });
-            connection.on("OnVolumeChanged", function (event) {
-                document.getElementById("spVolume").innerText = event;
-            });
-            connection.invoke("GetVolume").then(function (event) {
-                document.getElementById("spVolume").innerText = event;
-            });
-
-            //max volume
-            document.getElementById("btnMaxVolumePlus").addEventListener("click", () => {
-
-                var volume = getMaxVolume() + 5;
-                connection.invoke("SetSettingMaxVolume", volume);
-            });
-            document.getElementById("btnMaxVolumeMinus").addEventListener("click", () => {
-
-                var volume = getMaxVolume() - 5;
-                connection.invoke("SetSettingMaxVolume", volume);
-            });
-            connection.on("OnSettingMaxVolumeChanged", function (event) {
-                document.getElementById("spMaxVolume").innerText = event;
-            });
-            connection.invoke("GetSettingMaxVolume").then(function (event) {
-                document.getElementById("spMaxVolume").innerText = event;
-            });
-
-            //delete
-            document.getElementById("btnDelete").addEventListener("click", () => {
-
-                connection.invoke("Delete", getSelectedNode());
-            });
-
-            //move
-            document.getElementById("btnMove").addEventListener("click", () => {
-
-                connection.invoke("Move", getSelectedNode(), getSelectedUploadDirectory());
-            });
+            pitchOnChange();
         });
 
         function FileUpload(file, directory) {
@@ -209,7 +216,10 @@
                         connection.invoke("Play", {
                             Sounds: [
                                 {
-                                    Sound: child
+                                    Sound: child,
+                                    Options: {
+                                        SpeedPitch: getPitchRatio()
+                                    }
                                 }
                             ]
                         });
@@ -274,9 +284,28 @@
             return volume;
         }
 
+        function pitchOnChange() {
+            document.getElementById("lblPitch").innerText = getPitchPercent();
+        }
+
+        function getPitchPercent() {
+            return parseInt(document.getElementById("inpPitch").value);
+        }
+
+        function getPitchRatio() {
+            return getPitchPercent() / 100;
+        }
+
     </script>
     <div id="lstSounds"></div>
-    <input type="button" id="btnStop" value="Stop" />
+    <div>
+        <label for="inpPitch">Speed/pitch (50%-300%):</label>
+        <input type="range" min="50" max="300" value="100" onchange="pitchOnChange()" id="inpPitch" />
+        <span id="lblPitch"></span>
+    </div>
+    <div>
+        <input type="button" id="btnStop" value="Stop" />
+    </div>
     <div>
         <input type="file" id="inpFileUpload" />
         <input type="button" id="btnUpload" value="Upload" />
