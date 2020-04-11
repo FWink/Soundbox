@@ -26,14 +26,14 @@ namespace Soundbox
 
         /// <summary>
         /// Returns the actual, full playback length of the <see cref="Sound"/> in ms while factoring in:<list type="bullet">
-        /// <item><see cref="Sound.Length"/></item>
+        /// <item><see cref="SoundMetaData.Length"/></item>
         /// <item><see cref="PlaybackOptions.SpeedPitch"/></item>
         /// </list>
         /// </summary>
         /// <returns></returns>
         public long GetActualLength()
         {
-            return (long) (Sound.Length / Options.SpeedPitch);
+            return (long) (Sound.MetaData.Length / Options.SpeedPitch);
         }
     }
 }

@@ -59,7 +59,10 @@ namespace Soundbox.Test
 
             if ((file1 is Sound sound1) && (file2 is Sound sound2))
             {
-                if (sound1.Length != sound2.Length)
+                SoundMetaData meta1 = sound1.MetaData;
+                SoundMetaData meta2 = sound2.MetaData;
+
+                if (meta1.Length != meta2.Length)
                     return false;
             }
 
@@ -151,7 +154,10 @@ namespace Soundbox.Test
                 AbsoluteFileName = "AbsoluteFileName",
                 IconUrl = "IconUrl",
                 Tags = new string[] { "1", "2", "3" },
-                Length = 17
+                MetaData = new SoundMetaData()
+                {
+                    Length = 17
+                }
             };
 
             directoryRoot.AddChild(sound);
@@ -237,7 +243,10 @@ namespace Soundbox.Test
                 AbsoluteFileName = "AbsoluteFileName",
                 IconUrl = "IconUrl",
                 Tags = new string[] { "1", "2", "3" },
-                Length = 17
+                MetaData = new SoundMetaData()
+                {
+                    Length = 17
+                }
             };
 
             directoryRoot.AddChild(directoryChild);
@@ -286,7 +295,10 @@ namespace Soundbox.Test
                 AbsoluteFileName = "AbsoluteFileName",
                 IconUrl = "IconUrl",
                 Tags = new string[] { "1", "2", "3" },
-                Length = 17
+                MetaData = new SoundMetaData()
+                {
+                    Length = 17
+                }
             };
 
             directoryRoot.AddChild(directoryChild);

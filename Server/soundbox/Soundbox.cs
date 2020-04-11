@@ -308,8 +308,15 @@ namespace Soundbox
 
             //TODO check display name unique in parent
 
-            sound.ID = Guid.NewGuid();
-            sound.ParentDirectory = directory;
+            //we store only a few select properties of the given sound
+            Sound soundClean = new Sound();
+            soundClean.ID = Guid.NewGuid();
+            soundClean.Name = sound.Name;
+            soundClean.FileName = sound.FileName;
+            soundClean.Tags = sound.Tags;
+            soundClean.ParentDirectory = directory;
+
+            sound = soundClean;
             MakeSoundFileName(sound);
 
             ResultStatus status = BaseResultStatus.INTERNAL_SERVER_ERROR;
@@ -330,6 +337,13 @@ namespace Soundbox
                 {
                     status = FileResultStatus.IO_ERROR;
                     throw;
+                }
+
+                //read meta data from temp file (i.e. before we enter the database lock)
+                var metaDataProvider = ServiceProvider.GetService(typeof(IMetaDataProvider)) as IMetaDataProvider;
+                if(metaDataProvider != null)
+                {
+                    sound.MetaData = await metaDataProvider.GetMetaData(tempFile);
                 }
 
                 try

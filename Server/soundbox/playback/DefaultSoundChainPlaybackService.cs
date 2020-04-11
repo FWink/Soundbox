@@ -83,7 +83,7 @@ namespace Soundbox
             //whether to play the next sound when we're done here (i.e. this is not the last track of the chain)
             bool continueNextSound = index < (sounds.Sounds.Count - 1);
             //whether to use SoundService's callback to start the next sound (more accurate) or to use start a timer on our own to play the next sound in the chain
-            bool continueInCallback = continueNextSound && sound.Options.ChainDelayMs == 0;
+            bool continueInCallback = continueNextSound && (sound.Options.ChainDelayMs == 0 || !sound.Sound.MetaData.HasLength);
 
             var player = GetSoundService();
             player.PlaybackFinished += (sender, args) =>
@@ -130,6 +130,7 @@ namespace Soundbox
 
                 if (continueInCallback)
                 {
+                    //TODO use a timer here for ChainDelayMs > 0
                     //next sound
                     Play(context, sounds, index + 1);
                 }
@@ -155,14 +156,22 @@ namespace Soundbox
             if(continueNextSound && !continueInCallback)
             {
                 //start a timer to trigger the next sound.
-                var timer = new System.Timers.Timer(Math.Max(0, sound.GetActualLength() - sound.Options.ChainDelayMs));
+                var timer = new System.Timers.Timer(Math.Max(0, sound.GetActualLength() + sound.Options.ChainDelayMs));
+                timer.AutoReset = false;
                 timer.Elapsed += (tSender, tArgs) =>
                 {
+                    //cleanup
+                    timer.Stop();
+                    timer.Dispose();
+
+                    //clip the current sound if required
                     if (sound.Options.ChainDelayMs < 0 && sound.Options.ChainDelayClip)
                         player.Stop();
 
+                    //start the next sound
                     Play(context, sounds, index + 1);
                 };
+                timer.Start();
             }
         }
 

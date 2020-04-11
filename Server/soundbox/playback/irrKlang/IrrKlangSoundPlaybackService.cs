@@ -54,6 +54,7 @@ namespace Soundbox.Playback.IrrKlang
             if (virtualVolumeService != null)
             {
                 volume = Volume.GetVolume(volume, await virtualVolumeService.GetVolume());
+                virtualVolumeService.RegisterSoundPlayback(this);
             }
 
             Playback.Volume = Utilities.GetVolume(volume);
@@ -63,12 +64,6 @@ namespace Soundbox.Playback.IrrKlang
 
             //setup is done: start playing the sound
             Playback.Paused = false;
-
-            //register with the virtual volume service once the sound starts playing (prevent unlikely race condition)
-            if(virtualVolumeService != null)
-            {
-                virtualVolumeService.RegisterSoundPlayback(this);
-            }
         }
 
         public void SetVolume(double volume)

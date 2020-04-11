@@ -31,10 +31,20 @@ namespace Soundbox
         /// </summary>
         public string IconUrl;
 
+        private ICollection<string> _tags;
         /// <summary>
         /// List of tags/categories to easily find similar files. E.g. "Star Wars", "Funny", "Meme"...
         /// </summary>
-        public ICollection<string> Tags;
+        public ICollection<string> Tags
+        {
+            get
+            {
+                if (_tags == null)
+                    _tags = new List<string>();
+                return _tags;
+            }
+            set => _tags = value;
+        }
 
         #endregion
 

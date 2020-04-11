@@ -24,6 +24,7 @@ namespace Soundbox
             //setup the playback and volume services
             Type playBackType = null;
             Type volumeType = null;
+            Type metaDataType = null;
             
             if(System.Environment.OSVersion.Platform == PlatformID.Win32NT)
             {
@@ -45,6 +46,9 @@ namespace Soundbox
                 services.AddSingleton<IVolumeService>(provider => provider.GetService<Playback.IrrKlang.DefaultIrrKlangEngineProvider>());
 
                 volumeType = typeof(Playback.IrrKlang.DefaultIrrKlangEngineProvider);
+
+                metaDataType = typeof(Playback.IrrKlang.IrrKlangMetaDataProvider);
+                services.AddTransient(typeof(IMetaDataProvider), metaDataType);
             }
 
             //volume

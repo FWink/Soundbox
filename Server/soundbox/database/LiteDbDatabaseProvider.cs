@@ -35,6 +35,9 @@ namespace Soundbox
             BsonMapper.Entity<Sound>()
                 .DbRef(f => f.ParentDirectory, COLLECTION_SOUNDS_NAME);
 
+            BsonMapper.Entity<SoundMetaData>()
+                .Ignore(m => m.HasLength);
+
             //open the database file
             var databaseDirectory = config.GetRootDirectory() + "database/";
             Directory.CreateDirectory(databaseDirectory);

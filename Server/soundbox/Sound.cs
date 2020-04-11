@@ -7,9 +7,16 @@ namespace Soundbox
 {
     public class Sound : SoundboxFile
     {
-        /// <summary>
-        /// The sound's play length at 100% speed in ms.
-        /// </summary>
-        public long Length;
+        private SoundMetaData _metaData;
+        public SoundMetaData MetaData
+        {
+            get
+            {
+                if (_metaData == null)
+                    _metaData = new SoundMetaData();
+                return _metaData;
+            }
+            set => _metaData = value;
+        }
     }
 }
