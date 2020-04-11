@@ -12,6 +12,7 @@ namespace Soundbox
     /// These two axioms combined result in the optimal behavior for any <see cref="IVolumeService"/>: IVirtualVolumeService is available ? => use it to adjust the volume; otherwise set the volume on the OS level.
     /// </summary>
     /// <seealso cref="Volume.GetVolume(double, double)"/>
+    /// <seealso cref="IVirtualVolumeServiceCoop"/>
     public interface IVirtualVolumeService
     {
         /// <summary>

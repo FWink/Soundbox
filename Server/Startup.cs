@@ -20,8 +20,47 @@ namespace Soundbox
 
             services.AddSingleton<Soundbox>();
             services.AddTransient<ISoundChainPlaybackService,DefaultSoundChainPlaybackService>();
-            services.AddTransient<ISoundPlaybackService,SimpleDummySoundPlaybackService>();
-            services.AddSingleton<IVolumeService,DummyVolumeService>();
+
+            //setup the playback and volume services
+            Type playBackType = null;
+            Type volumeType = null;
+            
+            if(System.Environment.OSVersion.Platform == PlatformID.Win32NT)
+            {
+                playBackType = typeof(Playback.IrrKlang.IrrKlangSoundPlaybackService);
+            }
+
+            if(playBackType == null)
+            {
+                playBackType = typeof(SimpleDummySoundPlaybackService);
+            }
+            services.AddTransient(typeof(ISoundPlaybackService), playBackType);
+
+            //player backend if required
+            if(playBackType == typeof(Playback.IrrKlang.IrrKlangSoundPlaybackService))
+            {
+                //add irrKlang sound engine
+                services.AddSingleton<Playback.IrrKlang.DefaultIrrKlangEngineProvider>();
+                services.AddSingleton<Playback.IrrKlang.IIrrKlangEngineProvider>(provider => provider.GetService<Playback.IrrKlang.DefaultIrrKlangEngineProvider>());
+                services.AddSingleton<IVolumeService>(provider => provider.GetService<Playback.IrrKlang.DefaultIrrKlangEngineProvider>());
+
+                volumeType = typeof(Playback.IrrKlang.DefaultIrrKlangEngineProvider);
+            }
+
+            //volume
+            if(volumeType == null)
+            {
+                volumeType = typeof(DummyVolumeService);
+                services.AddSingleton(typeof(IVolumeService), volumeType);
+            }
+
+            //add virtual volume service if applicable
+            if (typeof(ISoundPlaybackVirtualVolumeService).IsAssignableFrom(playBackType) && typeof(IVirtualVolumeServiceCoop).IsAssignableFrom(volumeType))
+            {
+                services.AddSingleton<IVirtualVolumeService, DefaultVirtualVolumeService>();
+            }
+
+            //config, database and preferences
             services.AddSingleton<ISoundboxConfigProvider,DefaultSoundboxConfigProvider>();
             services.AddSingleton<IDatabaseProvider,LiteDbDatabaseProvider>();
 

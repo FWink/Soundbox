@@ -1,8 +1,41 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
+    <Platforms>AnyCPU;x64;x86</Platforms>
   </PropertyGroup>
+
+  <ItemGroup Condition=" '$(Platform)' == 'x64'">
+    <ContentWithTargetPath Include="libs\irrKlang\x64\ikpFlac.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>ikpFlac.dll</TargetPath>
+    </ContentWithTargetPath>
+	
+    <ContentWithTargetPath Include="libs\irrKlang\x64\ikpMP3.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>ikpMP3.dll</TargetPath>
+    </ContentWithTargetPath>
+
+    <Reference Include="irrKlang.NET4">
+      <HintPath>libs\irrKlang\x64\irrKlang.NET4.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(Platform)' == 'x86'">
+    <ContentWithTargetPath Include="libs\irrKlang\x86\ikpFlac.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>ikpFlac.dll</TargetPath>
+    </ContentWithTargetPath>
+	
+    <ContentWithTargetPath Include="libs\irrKlang\x86\ikpMP3.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>ikpMP3.dll</TargetPath>
+    </ContentWithTargetPath>
+
+    <Reference Include="irrKlang.NET4">
+      <HintPath>libs\irrKlang\x86\irrKlang.NET4.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="wwwroot\lib\" />

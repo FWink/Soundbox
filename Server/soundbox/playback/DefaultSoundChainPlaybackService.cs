@@ -136,6 +136,7 @@ namespace Soundbox
             };
             lock(this)
             {
+                //TODO async
                 player.Play(context, sound);
                 this.SoundsPlaying.Add(sound);
                 this.PlayersPlaying.Add(player);

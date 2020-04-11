@@ -23,7 +23,8 @@ namespace Soundbox
             "mp3",
             "wav",
             "ogg",
-            "aac"
+            "aac",
+            "flac"
         };
 
         protected IHubContext<SoundboxHub, ISoundboxClient> HubContext;
@@ -1094,10 +1095,7 @@ namespace Soundbox
         /// <returns></returns>
         public async Task<ServerResult> SetVolume(int volume)
         {
-            if (volume > Constants.VOLUME_MAX)
-                volume = Constants.VOLUME_MAX;
-            if (volume < Constants.VOLUME_MIN)
-                volume = Constants.VOLUME_MIN;
+            volume = (int)Volume.Limit(volume);
 
             double volumeMax = await GetVolumeSettingMax();
             double volumeModified = Volume.GetVolume(volume, volumeMax);
@@ -1140,10 +1138,7 @@ namespace Soundbox
             if(await preferences.Contains(PREFERENCES_KEY_VOLUME_MAX))
             {
                 int setting = await preferences.Get(PREFERENCES_KEY_VOLUME_MAX);
-                if (setting > Constants.VOLUME_MAX)
-                    setting = Constants.VOLUME_MAX;
-                else if (setting < Constants.VOLUME_MIN)
-                    setting = Constants.VOLUME_MIN;
+                setting = (int)Volume.Limit(setting);
 
                 VolumeSettingMax = setting;
             }
@@ -1161,10 +1156,7 @@ namespace Soundbox
         /// <seealso cref="GetVolumeSettingMax"/>
         public async Task<ServerResult> SetVolumeSettingMax(int volumeSettingMax)
         {
-            if (volumeSettingMax > Constants.VOLUME_MAX)
-                volumeSettingMax = Constants.VOLUME_MAX;
-            if (volumeSettingMax < Constants.VOLUME_MIN)
-                volumeSettingMax = Constants.VOLUME_MIN;
+            volumeSettingMax = (int) Volume.Limit(volumeSettingMax);
 
             //get the last value of SetVolume. need that to adjust the current playback volume accordingly
             int currentVolumeSetting = await GetVolume();
@@ -1186,6 +1178,7 @@ namespace Soundbox
         protected void Log(Exception ex)
         {
             //TODO
+            Console.Error.Write(ex.ToString());
         }
     }
 

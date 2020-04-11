@@ -19,7 +19,7 @@ namespace Soundbox
         public DefaultSoundboxConfigProvider(IConfiguration config)
         {
             //TODO paths from config
-            this.BaseDirectory = "~/.soundbox/";
+            this.BaseDirectory = "wwwroot/soundbox/";
         }
 
         public string GetRootDirectory()

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Soundbox
+namespace Soundbox.Util
 {
     public static class Volume
     {
@@ -38,6 +38,22 @@ namespace Soundbox
                 return Constants.VOLUME_MAX;
 
             return (volumeModified * (Constants.VOLUME_MAX - Constants.VOLUME_MIN) / modifier) + Constants.VOLUME_MIN;
+        }
+
+        /// <summary>
+        /// Limits the given volume to our maximum values <see cref="Constants.VOLUME_MAX"/> and <see cref="Constants.VOLUME_MIN"/>.
+        /// </summary>
+        /// <param name="volume"></param>
+        /// <returns></returns>
+        public static double Limit(double volume)
+        {
+            if (!double.IsFinite(volume))
+                return Constants.VOLUME_MAX;
+            if (volume > Constants.VOLUME_MAX)
+                return Constants.VOLUME_MAX;
+            if (volume < Constants.VOLUME_MIN)
+                return Constants.VOLUME_MIN;
+            return volume;
         }
     }
 }
