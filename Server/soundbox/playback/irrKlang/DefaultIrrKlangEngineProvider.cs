@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace Soundbox.Playback.IrrKlang
 {
+    //TODO irrKlang seems to cache all sounds it plays. we need to investigate that and see if we can setup a memory limit
     public class DefaultIrrKlangEngineProvider : IIrrKlangEngineProvider, IDisposable, IVolumeService
     {
         protected bool Initialized = false;
