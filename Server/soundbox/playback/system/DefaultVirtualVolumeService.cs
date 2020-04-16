@@ -41,19 +41,7 @@ namespace Soundbox
                     Volume = await GetPreferences().Get(PREFERENCES_KEY_VOLUME);
                 }
 
-                if (!double.IsFinite(Volume))
-                {
-                    //is not stored
-                    Volume = Constants.VOLUME_MAX;
-                }
-                else if(Volume > Constants.VOLUME_MAX)
-                {
-                    Volume = Constants.VOLUME_MAX;
-                }
-                else if(Volume < Constants.VOLUME_MIN)
-                {
-                    Volume = Constants.VOLUME_MIN;
-                }
+                Volume = Util.Volume.Limit(Volume);
             }
 
             return Volume;
