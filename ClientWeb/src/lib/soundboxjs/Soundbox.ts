@@ -5,6 +5,11 @@ import { ISound, isSound } from './Sound';
 import { ISoundboxDirectory, isDirectory } from './SoundboxDirectory';
 import { ISoundPlaybackRequest } from './SoundPlaybackRequest';
 import { ISoundboxFileBase } from './SoundboxFile';
+import { IPlayingNow } from './PlayingNow';
+import { ISoundUpload, ISoundUploadFull } from './Upload';
+import { IFileResult } from './results/FileResult';
+import { SoundboxError } from './errors/SoundboxError';
+import { ResultStatusCode, fromHttp } from './results/ResultStatusCode';
 
 /**
  * Represents a Soundbox server with a two-way realtime communication channel (via SignalR).
@@ -19,6 +24,18 @@ export class Soundbox {
     protected readonly baseUrl: string;
 
     protected connection: signalR.HubConnection;
+    /**
+     * True: {@link start} has been called successfully and we are ready to go.
+     */
+    protected connected: boolean = false;
+    /**
+     * True: {@link start} is currently working.
+     */
+    protected connecting: boolean = false;
+    /**
+     * Used in {@link start} to update the caller should {@link connecting} be true when the method is called (only one connection attempt may be underway at once).
+     */
+    protected connectingSubject: Subject<void>;
 
     /**
      * 
@@ -32,13 +49,27 @@ export class Soundbox {
     }
 
     /**
-     * Starts the Soundbox handler and connects to the server.
+     * Starts the Soundbox handler and connects to the server or ensures that we are connected to the server for repeated calls.
      * Promise resolves once the server connection has been established.
      * At that point any server queries can be performed, though the following operations are performed automatically:
      * * fetch volume (see {@link volume}).
      * * fetch settings (see {@link settings})
+     * To not miss any updates you should attach your subscribers before calling this method.
      */
     public start(): Promise<void> {
+        if (this.connected) {
+            //already connected
+            return Promise.resolve();
+        }
+        else if (this.connecting) {
+            return this.connectingSubject.toPromise();
+        }
+
+        this.connection?.stop();
+
+        this.connecting = true;
+        this.connectingSubject = new Subject<void>();
+
         const connection = new signalR.HubConnectionBuilder()
             .withUrl(this.baseUrl + "/api/v1/ws")
             .build();
@@ -54,28 +85,66 @@ export class Soundbox {
                 this.connection.on("OnSettingMaxVolumeChanged", (maxVolume: number) => {
                     this.onMaxVolumeChanged(maxVolume);
                 });
+                this.connection.on("OnSoundsPlayingChanged", (playingNow: IPlayingNow[]) => {
+                    this.onPlaybackChanged(playingNow);
+                });
             })
             //further setup for each reconnect
             .then(() => {
                 return this.onConnected();
+            })
+            .then(() => {
+                this.connected = true;
+                this.connectingSubject.next();
+                this.connectingSubject.complete();
+            })
+            .finally(() => {
+                this.connecting = false;
             });
+    }
+
+    /**
+     * Closes the connection to the soundbox server.
+     **/
+    public dispose() {
+        if (this.connecting) {
+            //wait until we are connected
+            this.start()
+                .finally(() => {
+                    this.dispose();
+                });
+            return;
+        }
+
+        this.connection?.stop();
+        this.connecting = false;
+        this.connected = false;
     }
 
     /**
      * Called when we (re-)connect to the Soundbox server. Takes care of some setup such as requesting the current volume.
      */
-    protected onConnected(): Promise<void> {
-        return this.connection.invoke("GetVolume")
-            .then((volume: number) => {
-                this.onVolumeChanged(volume);
-            })
+    protected onConnected(): Promise<any> {
 
-            .then(() => {
-                return this.connection.invoke("GetSettingMaxVolume");
-            })
-            .then((maxVolume: number) => {
-                this.onMaxVolumeChanged(maxVolume);
-            })
+        const promises: Promise<any>[] = [];
+
+        promises.push(
+            this.connection.invoke("GetVolume")
+                .then((volume: number) => {
+                    this.onVolumeChanged(volume);
+                }));
+        promises.push(
+            this.connection.invoke("GetSettingMaxVolume")
+                .then((maxVolume: number) => {
+                    this.onMaxVolumeChanged(maxVolume);
+                }));
+        promises.push(
+            this.connection.invoke("GetSoundsPlayingNow")
+                .then((playingNow: IPlayingNow[]) => {
+                    this.onPlaybackChanged(playingNow);
+                }));
+
+        return Promise.all(promises);
     }
 
     //#region volume
@@ -168,8 +237,10 @@ export class Soundbox {
     public play(request: ISound): Promise<void>;
     public play(requestOrSound: ISoundPlaybackRequest | ISound): Promise<void> {
 
+        let request: ISoundPlaybackRequest;
+
         if (!this.isRequest(requestOrSound)) {
-            requestOrSound = {
+            request = {
                 sounds: [
                     {
                         sound: requestOrSound
@@ -177,9 +248,11 @@ export class Soundbox {
                 ]
             };
         }
+        else {
+            request = requestOrSound;
+        }
 
-        let request: ISoundPlaybackRequest = requestOrSound;
-        request = this.flattenRequest(request);
+        request = this.minimizeRequest(request);
 
         return this.connection.invoke("Play", request);
     }
@@ -193,12 +266,12 @@ export class Soundbox {
     }
 
     /**
-     * Flattens the request's sounds by applying {@link flattenFile}.
+     * Minimizes and flattens the request's sounds by applying {@link minimizeFile}.
      * @param request
      */
-    protected flattenRequest(request: ISoundPlaybackRequest): ISoundPlaybackRequest {
+    protected minimizeRequest(request: ISoundPlaybackRequest): ISoundPlaybackRequest {
         for (let i = 0; i < request.sounds.length; ++i) {
-            request.sounds[i].sound = this.flattenFile(request.sounds[i].sound);
+            request.sounds[i].sound = this.minimizeFile(request.sounds[i].sound);
         }
 
         return request;
@@ -272,13 +345,118 @@ export class Soundbox {
 
     //#endregion
 
+    //#region PlaybackMonitor
+
+    /**
+     * Alias of {@link playingNow}. Used to emit changes in the current playback state.
+     */
+    protected readonly playingNowSubject: Subject<IPlayingNow[]> = new ReplaySubject<IPlayingNow[]>(1);
+
+    /**
+     * Updated whenever the Soundbox's playback state changes on the server. That includes when this Soundbox instance changes the playback via {@link play} or {@link stop}.
+     */
+    public readonly playingNow: Observable<IPlayingNow[]> = this.playingNowSubject;
+
+    /**
+     * The Soundbox's current playback.
+     */
+    protected currentPlayingNow: IPlayingNow[];
+
+    /**
+     * Returns the Soundbox's current playback.
+     */
+    public getPlayingNow(): IPlayingNow[] {
+        return this.currentPlayingNow;
+    }
+
+    /**
+     * Called whenever the Soundbox's playback state changed.
+     * @param playingNow
+     */
+    protected onPlaybackChanged(playingNow: IPlayingNow[]) {
+        this.currentPlayingNow = playingNow;
+        this.playingNowSubject.next(playingNow);
+    }
+
+    //#endregion
+
+    //#region Upload
+
+    /**
+     * Uploads a new sound into the Soundbox.
+     * @param file
+     * @param sound
+     * @param directory
+     */
+    public upload(file: File, sound: ISoundUpload, directory?: ISoundboxDirectory): Promise<ISound> {
+        return new Promise<ISound>((resolve, reject) => {
+
+            //add the file name to the request
+            const soundFull: ISoundUploadFull = {
+                name: sound.name,
+                tags: sound.tags,
+                fileName: file.name
+            };
+            sound = soundFull;
+
+            //build URL from parameters. body will be the file only (binary)
+            let url = this.baseUrl + "/api/v1/rest/sound?sound=" + encodeURIComponent(JSON.stringify(sound));
+            if (directory) {
+                url += "&directory=" + encodeURIComponent(JSON.stringify(this.minimizeFile(directory)));
+            }
+
+            const reader = new FileReader();
+
+            const request = new XMLHttpRequest();
+            request.open("POST", url);
+            //set headers for binary file transfer
+            request.setRequestHeader("Content-Type", "application/octet-stream");
+            request.setRequestHeader("Content-Length", file.size.toString());
+
+            //prepare to send a result to the client
+            request.onreadystatechange = () => {
+                if (request.readyState == XMLHttpRequest.DONE) {
+                    if (request.status == 200) {
+                        const result: IFileResult = JSON.parse(request.response);
+
+                        if (result.success) {
+                            resolve(result.file as ISound);
+                        }
+                        else {
+                            reject(new SoundboxError(result.status));
+                        }
+                    }
+                    else {
+                        reject(new SoundboxError({
+                            code: fromHttp(request.status)
+                        }));
+                    }
+                }
+            };
+            request.onerror = request.onabort = () => {
+                reject(new SoundboxError({
+                    code: ResultStatusCode.CONNECTION_ERROR
+                }));
+            }
+
+            //send when file has been read
+            reader.onload = evt => {
+                request.send(evt.target.result);
+            };
+            //start reading file
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    //#endregion
+
     //#region Utilities
 
     /**
      * Flattens the given file into its most basic core ({@link ISoundboxFileBase}) which is sufficient to send to the server for several calls.
      * @param file
      */
-    protected flattenFile<T extends ISoundboxFileBase>(file: T): T {
+    protected minimizeFile<T extends ISoundboxFileBase>(file: T): T {
         //hack but we know what we're doing here
         return {
             id: file.id

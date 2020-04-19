@@ -1,9 +1,11 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { SoundboxMainPage } from '../pages/SoundboxMainPage';
+import { soundboxProvider } from '../providers/SoundboxProvider';
 
 @NgModule({
     declarations: [
@@ -12,9 +14,12 @@ import { SoundboxMainPage } from '../pages/SoundboxMainPage';
     ],
     imports: [
         BrowserModule,
-        AppRoutingModule
+        AppRoutingModule,
+        FormsModule
     ],
-    providers: [],
+    providers: [
+        soundboxProvider
+    ],
     bootstrap: [AppComponent]
 })
 export class AppModule { }

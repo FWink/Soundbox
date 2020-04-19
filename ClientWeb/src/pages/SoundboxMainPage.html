@@ -1,3 +1,28 @@
 ﻿<div>
     <button type="button" *ngFor="let sound of sounds" (click)="play(sound)">{{sound.name}}</button>
 </div>
+<div>
+    Pitch:
+    <input type="range" min="50" max="300" [(ngModel)]="pitch" />
+    {{pitch}}
+</div>
+<div>
+    <button type="button" (click)="soundbox.stop()">Stop</button>
+</div>
+<div>
+    Volume: {{soundbox.volume | async}}
+    <button type="button" (click)="volumeIncrement()">+</button>
+    <button type="button" (click)="volumeDecrement()">-</button>
+</div>
+<div>
+    Playback:
+    <div *ngFor="let playback of soundbox.playingNow | async">{{playback.sound.name}}</div>
+</div>
+<div>
+    Upload:
+    <div>
+        Name: <input type="text" [(ngModel)]="uploadName" />
+        <input type="file" accept="audio/*" (change)="uploadFiles = $event.target.files" />
+        <button type="button" (click)="upload()">Upload</button>
+    </div>
+</div>

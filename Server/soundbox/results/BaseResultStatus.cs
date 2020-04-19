@@ -31,6 +31,12 @@ namespace Soundbox
 
         public static readonly BaseResultStatus INTERNAL_SERVER_ERROR = new BaseResultStatus(-500, "Internal server error");
 
+        public static readonly BaseResultStatus UNKNOWN_ERROR = new BaseResultStatus(-1000, "Unknown error");
+        /// <summary>
+        /// Dummy error for client-side error codes.
+        /// </summary>
+        public static readonly BaseResultStatus CONNECTION_ERROR = new BaseResultStatus(-1001, "Connection to the server was interrupted");
+
         private BaseResultStatus(int code, string message, bool success = false)
         {
             Code = code;

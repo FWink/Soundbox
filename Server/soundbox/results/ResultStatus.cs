@@ -8,7 +8,7 @@ namespace Soundbox
 {
     /// <summary>
     /// Base class for the result status of client->server operations.<br/>
-    /// Implementing class SHOULD make sure to have globally unique <see cref="Code"/>s
+    /// Implementing class MUST make sure to have globally unique <see cref="Code"/>s
     /// </summary>
     public abstract class ResultStatus
     {
