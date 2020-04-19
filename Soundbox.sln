@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Server", "Server\Server.csp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ServerTests", "ServerTests\ServerTests.csproj", "{4585507B-EA12-4261-9A0C-8FA2B1559082}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClientWeb", "ClientWeb\ClientWeb.csproj", "{ACADAA4D-99DD-44FC-B529-6766C21898DA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +33,14 @@ Global
 		{4585507B-EA12-4261-9A0C-8FA2B1559082}.Release|x64.Build.0 = Release|x64
 		{4585507B-EA12-4261-9A0C-8FA2B1559082}.Release|x86.ActiveCfg = Release|x86
 		{4585507B-EA12-4261-9A0C-8FA2B1559082}.Release|x86.Build.0 = Release|x86
+		{ACADAA4D-99DD-44FC-B529-6766C21898DA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{ACADAA4D-99DD-44FC-B529-6766C21898DA}.Debug|x64.Build.0 = Debug|Any CPU
+		{ACADAA4D-99DD-44FC-B529-6766C21898DA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ACADAA4D-99DD-44FC-B529-6766C21898DA}.Debug|x86.Build.0 = Debug|Any CPU
+		{ACADAA4D-99DD-44FC-B529-6766C21898DA}.Release|x64.ActiveCfg = Release|Any CPU
+		{ACADAA4D-99DD-44FC-B529-6766C21898DA}.Release|x64.Build.0 = Release|Any CPU
+		{ACADAA4D-99DD-44FC-B529-6766C21898DA}.Release|x86.ActiveCfg = Release|Any CPU
+		{ACADAA4D-99DD-44FC-B529-6766C21898DA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

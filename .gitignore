@@ -5,6 +5,7 @@
 
 # Soundbox-specific files
 Server/wwwroot/*
+ClientWeb/dist
 
 # User-specific files
 *.rsuser

@@ -16,6 +16,7 @@ namespace Soundbox
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors();
             services.AddSignalR().AddNewtonsoftJsonProtocol();
 
             services.AddSingleton<Soundbox>();
@@ -82,6 +83,15 @@ namespace Soundbox
             {
                 app.UseDeveloperExceptionPage();
             }
+
+            //TODO for angular test (with ng serve)
+            app.UseCors(
+                options => options
+                    .AllowAnyHeader()
+                    .AllowCredentials()
+                    .WithMethods("POST")
+                    .SetIsOriginAllowed(origin => true)
+            );
 
             app.UseDefaultFiles(new DefaultFilesOptions
             {
