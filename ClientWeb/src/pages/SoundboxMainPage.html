@@ -24,5 +24,7 @@
         Name: <input type="text" [(ngModel)]="uploadName" />
         <input type="file" accept="audio/*" (change)="uploadFiles = $event.target.files" />
         <button type="button" (click)="upload()">Upload</button>
+        <button type="button" (click)="uploadAbort()">Abort</button>
     </div>
+    Progress: {{ (uploadStatus?.progress | async)?.done }} / {{ (uploadStatus?.progress | async)?.total }}
 </div>

@@ -111,6 +111,7 @@
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundMetaData.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundPlaybackRequest.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\Upload.ts" />
+    <TypeScriptCompile Include="src\lib\soundboxjs\UploadStatus.ts" />
     <TypeScriptCompile Include="src\main.ts" />
     <TypeScriptCompile Include="src\pages\SoundboxMainPage.ts" />
     <TypeScriptCompile Include="src\polyfills.ts" />

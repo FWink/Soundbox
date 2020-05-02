@@ -1,5 +1,5 @@
 ﻿import * as signalR from '@microsoft/signalr';
-import { Observable, Subject, ReplaySubject } from 'rxjs';
+import { Observable, Subject, ReplaySubject, BehaviorSubject } from 'rxjs';
 import { IServerSettings, IServerSettingsRequest } from './ServerSettings';
 import { ISound, isSound } from './Sound';
 import { ISoundboxDirectory, isDirectory } from './SoundboxDirectory';
@@ -10,6 +10,7 @@ import { ISoundUpload, ISoundUploadFull } from './Upload';
 import { IFileResult } from './results/FileResult';
 import { SoundboxError } from './errors/SoundboxError';
 import { ResultStatusCode, fromHttp } from './results/ResultStatusCode';
+import { IUploadStatus, IUploadProgress } from './UploadStatus';
 
 /**
  * Represents a Soundbox server with a two-way realtime communication channel (via SignalR).
@@ -383,13 +384,59 @@ export class Soundbox {
     //#region Upload
 
     /**
+     * Creates a proper formatted display name for a sound with the given file name.
+     * This is used in {@link upload} when no display name has been supplied.
+     * @param fileName
+     */
+    protected makeSoundName(fileName: string): string {
+        let displayName: string;
+		//replace _ by spaces ("surprise_motherf" -> "surprise motherf"
+        displayName = fileName.replace("_", " ");
+
+        //remove file type
+        displayName = displayName.replace(/\.[^.]*$/, "");
+
+        //TODO we could capitalize words
+
+        return displayName;
+    }
+
+    /**
      * Uploads a new sound into the Soundbox.
      * @param file
      * @param sound
      * @param directory
      */
-    public upload(file: File, sound: ISoundUpload, directory?: ISoundboxDirectory): Promise<ISound> {
-        return new Promise<ISound>((resolve, reject) => {
+    public upload(file: File, sound: ISoundUpload, directory?: ISoundboxDirectory): IUploadStatus {
+
+        //finished true: upload is done or aborted or an error occurred or...
+        let finished: boolean = false;
+        let aborted: boolean = false;
+
+        //prepare the result object
+        let status: IUploadStatus;
+
+        //progress output
+        const progressTotal: number = file.size;
+        const progress: Subject<IUploadProgress> = new BehaviorSubject<IUploadProgress>({
+            done: 0,
+            total: progressTotal
+        });
+
+        //prepare the HTTP request and an abort function
+        let request: XMLHttpRequest;
+        let abort: () => void = () => {
+            if (finished)
+                return;
+
+            aborted = true;
+            if (request) {
+                request.abort();
+            }
+        };
+
+        //start the upload asynchronously
+        const done = new Promise<ISound>((resolve, reject) => {
 
             //add the file name to the request
             const soundFull: ISoundUploadFull = {
@@ -399,6 +446,21 @@ export class Soundbox {
             };
             sound = soundFull;
 
+            if (!sound.name) {
+                sound.name = this.makeSoundName(soundFull.fileName);
+            }
+
+            //prepare a function that we can call on abort
+            let onabort = () => {
+                if (finished)
+                    return;
+
+                finished = true;
+                reject(new SoundboxError({
+                    code: ResultStatusCode.UPLOAD_ABORTED
+                }));
+            };
+
             //build URL from parameters. body will be the file only (binary)
             let url = this.baseUrl + "/api/v1/rest/sound?sound=" + encodeURIComponent(JSON.stringify(sound));
             if (directory) {
@@ -407,7 +469,7 @@ export class Soundbox {
 
             const reader = new FileReader();
 
-            const request = new XMLHttpRequest();
+            request = new XMLHttpRequest();
             request.open("POST", url);
             //set headers for binary file transfer
             request.setRequestHeader("Content-Type", "application/octet-stream");
@@ -415,11 +477,23 @@ export class Soundbox {
 
             //prepare to send a result to the client
             request.onreadystatechange = () => {
+                if (finished)
+                    return;
+
                 if (request.readyState == XMLHttpRequest.DONE) {
+                    finished = true;
+
                     if (request.status == 200) {
                         const result: IFileResult = JSON.parse(request.response);
 
                         if (result.success) {
+                            //make 100% sure we get a nice progress output
+                            progress.next({
+                                done: progressTotal,
+                                total: progressTotal
+                            });
+
+                            //and finally return the uploaded sound
                             resolve(result.file as ISound);
                         }
                         else {
@@ -433,19 +507,52 @@ export class Soundbox {
                     }
                 }
             };
-            request.onerror = request.onabort = () => {
+            request.onerror = request.onabort = request.ontimeout =
+                request.upload.onerror = request.upload.onabort = request.upload.ontimeout = () => {
+
+                if (finished)
+                    return;
+
+                if (aborted) {
+                    onabort();
+                    return;
+                }
+                finished = true;
+
                 reject(new SoundboxError({
                     code: ResultStatusCode.CONNECTION_ERROR
                 }));
-            }
+            };
+            request.upload.onprogress = ev => {
+                if (finished)
+                    return;
+
+                progress.next({
+                    done: ev.loaded,
+                    total: progressTotal
+                });
+            };
 
             //send when file has been read
             reader.onload = evt => {
+                if (aborted) {
+                    onabort();
+                    return;
+                }
+
                 request.send(evt.target.result);
             };
             //start reading file
             reader.readAsArrayBuffer(file);
         });
+
+        status = {
+            done: done,
+            progress: progress,
+            abort: abort
+        };
+
+        return status;
     }
 
     //#endregion

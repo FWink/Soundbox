@@ -7,16 +7,16 @@ class SoundboxProvider implements FactoryProvider {
     /**
      * Singleton
      */
-    protected static soundbox: Soundbox;
+    protected soundbox: Soundbox;
 
     provide = Soundbox;
     useFactory = () => {
-        if (SoundboxProvider.soundbox == null) {
-            SoundboxProvider.soundbox = new Soundbox(environment.soundboxEndpoint);
-            SoundboxProvider.soundbox.start();
+        if (this.soundbox == null) {
+            this.soundbox = new Soundbox(environment.soundboxEndpoint);
+            this.soundbox.start();
         }
 
-        return SoundboxProvider.soundbox;
+        return this.soundbox;
     }
     deps?: any[];
 

@@ -1,6 +1,7 @@
 ﻿import { Component, OnInit } from '@angular/core';
 import { Soundbox } from '../lib/soundboxjs/Soundbox';
 import { ISound } from '../lib/soundboxjs/Sound';
+import { IUploadStatus } from '../lib/soundboxjs/UploadStatus';
 
 @Component({
     templateUrl: 'SoundboxMainPage.html'
@@ -13,6 +14,7 @@ export class SoundboxMainPage implements OnInit {
     pitch: number = 100;
     uploadName: string;
     uploadFiles: File[];
+    uploadStatus: IUploadStatus;
 
     constructor(soundbox: Soundbox) {
         this.soundbox = soundbox;
@@ -51,9 +53,15 @@ export class SoundboxMainPage implements OnInit {
 
     upload() {
         if (this.uploadFiles && this.uploadFiles.length > 0) {
-            this.soundbox.upload(this.uploadFiles[0], {
+            this.uploadStatus = this.soundbox.upload(this.uploadFiles[0], {
                 name: this.uploadName
             });
+        }
+    }
+
+    uploadAbort() {
+        if (this.uploadStatus) {
+            this.uploadStatus.abort();
         }
     }
 }
