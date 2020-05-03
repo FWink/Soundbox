@@ -1,6 +1,7 @@
 ﻿import { FactoryProvider } from "@angular/core";
 import { Soundbox } from '../lib/soundboxjs/Soundbox';
 import { environment } from '../environments/environment';
+import { DefaultStorageProvider } from '../lib/soundboxjs/DefaultStorageProvider';
 
 class SoundboxProvider implements FactoryProvider {
 
@@ -12,7 +13,7 @@ class SoundboxProvider implements FactoryProvider {
     provide = Soundbox;
     useFactory = () => {
         if (this.soundbox == null) {
-            this.soundbox = new Soundbox(environment.soundboxEndpoint);
+            this.soundbox = new Soundbox(new DefaultStorageProvider("Soundbox."), environment.soundboxEndpoint);
             this.soundbox.start();
         }
 

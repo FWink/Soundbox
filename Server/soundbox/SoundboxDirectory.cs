@@ -40,5 +40,24 @@ namespace Soundbox
         {
             return ParentDirectory == null;
         }
+
+        /// <summary>
+        /// Flattens the directory and returns a copy without <see cref="Children"/> and <see cref="SoundboxNode.ParentDirectory"/>.
+        /// This is often used when returning files to a client when only a restricted set of information should be passed instead of the entire file tree.
+        /// </summary>
+        /// <returns></returns>
+        public SoundboxDirectory Flatten()
+        {
+            return new SoundboxDirectory()
+            {
+                ID = this.ID,
+                Name = this.Name,
+                IconUrl = this.IconUrl,
+                Tags = this.Tags,
+                Watermark = this.Watermark,
+                Children = null,
+                ParentDirectory = null
+            };
+        }
     }
 }

@@ -16,7 +16,7 @@ namespace Soundbox
     /// Singleton class that manages a list/tree of available sounds and handles playback.
     /// Clients are notified of the playback state etc via <see cref="SoundboxHub"/>
     /// </summary>
-    public class Soundbox : SoundboxContext, ISoundboxHubProvider
+    public class Soundbox : SoundboxContext
     {
         protected static readonly ICollection<string> SUPPORTED_FILE_TYPES = new string[]
         {
@@ -63,9 +63,16 @@ namespace Soundbox
             Directory.CreateDirectory(this.SoundsRootDirectory);
 
             this.Database = database;
+
+            //initialize our file tree
+            var taskSoundsRoot = LoadRoot();
+            taskSoundsRoot.Wait();
+            this.SoundsRoot = taskSoundsRoot.Result;
+
+            BuildNodeCache(this.SoundsRoot);
         }
 
-        public ISoundboxClient GetHub()
+        protected ISoundboxClient GetHub()
         {
             return HubContext.Clients.All;
         }
@@ -77,50 +84,83 @@ namespace Soundbox
         /// </summary>
         protected ReaderWriterLockSlim DatabaseLock = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
 
+        #region "Sounds Cache"
+        /// <summary>
+        /// Root directory of our file tree.
+        /// </summary>
         protected SoundboxDirectory SoundsRoot;
+
+        /// <summary>
+        /// Lookup table for all nodes in our sounds tree.
+        /// </summary>
+        /// <remarks>
+        /// Currently we cache all nodes here. At some later point we can decide to cache only a limited number of nodes
+        /// while loading nodes on-demand from the database.
+        /// </remarks>
+        protected readonly IDictionary<Guid, SoundboxNode> NodesCache = new Dictionary<Guid, SoundboxNode>();
+        #endregion
+
+        /// <summary>
+        /// Loads the root directory and thuse the entire file tree from our persistent database.
+        /// If the database is empty then a newly created empty directory is returned.
+        /// </summary>
+        /// <returns></returns>
+        protected async Task<SoundboxDirectory> LoadRoot()
+        {
+            var root = await Database.Get();
+
+            if (root == null)
+            {
+                //database is empty => create new root directory
+                root = new SoundboxDirectory();
+                root.ID = Guid.NewGuid();
+                root.Watermark = Guid.NewGuid();
+
+                await Database.Insert(root);
+            }
+
+            return root;
+        }
+
+        /// <summary>
+        /// Recursively adds the directory, all nodes in the directory and its descendant nodes to <see cref="NodesCache"/>.
+        /// </summary>
+        /// <param name="directory"></param>
+        protected void BuildNodeCache(SoundboxDirectory directory)
+        {
+            NodesCache[directory.ID] = directory;
+            foreach (var child in directory.Children)
+            {
+                NodesCache[child.ID] = child;
+                if (child is SoundboxDirectory childDirectory)
+                {
+                    BuildNodeCache(childDirectory);
+                }
+            }
+        }
 
         /// <summary>
         /// Returns the root directory of the <see cref="SoundboxNode"/> tree.
         /// </summary>
         /// <returns></returns>
-        public SoundboxDirectory GetSoundsTree()
+        protected SoundboxDirectory GetRootDirectory()
         {
-            try
-            {
-                DatabaseLock.EnterReadLock();
-
-                if (SoundsRoot == null)
-                {
-                    //TODO async
-                    var task = Database.Get();
-                    SoundsRoot = task.Result;
-
-                    if(SoundsRoot == null)
-                    {
-                        //database is empty => create new root directory
-                        SoundsRoot = new SoundboxDirectory();
-                        SoundsRoot.ID = Guid.NewGuid();
-                        SoundsRoot.Watermark = Guid.NewGuid();
-
-                        //TODO async
-                        Database.Insert(SoundsRoot);
-                    }
-                }
-                return SoundsRoot;
-            }
-            finally
-            {
-                DatabaseLock.ExitReadLock();
-            }
+            return SoundsRoot;
         }
 
         /// <summary>
-        /// Alias for <see cref="GetSoundsTree"/>.
+        /// Returns the given directory with its content from our database. Pass null to get the root directory.
         /// </summary>
+        /// <param name="directory"></param>
         /// <returns></returns>
-        protected SoundboxDirectory GetRootDirectory()
+        //TODO we've got a bit of a race condition here: internal access is synchronized (mostly, see usage of GetCleanFile).
+        // however we can get into trouble when returning files either via public getters or via client events: files can change after they have been returned here, so while the serializer is running.
+        // to fully fix this we'd have to completely copy the entire sound tree whenever something changes. returning copies only would mostly work; we'd have to make sure that internally everything is synchronized
+        public Task<SoundboxDirectory> GetDirectory(SoundboxDirectory directory = null)
         {
-            return GetSoundsTree();
+            if (directory == null)
+                return Task.FromResult(GetRootDirectory());
+            return Task.FromResult(GetCleanFile(directory));
         }
 
         /// <summary>
@@ -150,6 +190,15 @@ namespace Soundbox
                 Database.Update(directory);
                 directory = directory.ParentDirectory;
             } while (directory != null);
+        }
+
+        /// <summary>
+        /// Returns the current root-level watermark of the file tree.
+        /// </summary>
+        /// <returns></returns>
+        protected Guid GetRootWatermark()
+        {
+            return GetRootDirectory().Watermark;
         }
 
         #region "File management"
@@ -404,11 +453,12 @@ namespace Soundbox
                 DatabaseLock.EnterWriteLock();
 
                 //save previous watermark for event
-                Guid previousWatermark = GetSoundsTree().Watermark;
+                Guid previousWatermark = GetRootWatermark();
                 Guid newWatermark = Guid.NewGuid();
 
                 //add to cache
                 parent.AddChild(newFile);
+                NodesCache[newFile.ID] = newFile;
                 //add to database
                 //TODO async
                 Database.Insert(newFile);
@@ -622,7 +672,7 @@ namespace Soundbox
                 DatabaseLock.EnterWriteLock();
 
                 //save previous watermark for event
-                Guid previousWatermark = GetSoundsTree().Watermark;
+                Guid previousWatermark = GetRootWatermark();
                 Guid newWatermark = Guid.NewGuid();
 
                 //modify our local file
@@ -710,7 +760,7 @@ namespace Soundbox
                 DatabaseLock.EnterWriteLock();
 
                 //save previous watermark for event
-                Guid previousWatermark = GetSoundsTree().Watermark;
+                Guid previousWatermark = GetRootWatermark();
                 Guid newWatermark = Guid.NewGuid();
 
                 //move in cache
@@ -779,11 +829,12 @@ namespace Soundbox
                 DatabaseLock.EnterWriteLock();
 
                 //save previous watermark for event
-                Guid previousWatermark = GetSoundsTree().Watermark;
+                Guid previousWatermark = GetRootWatermark();
                 Guid newWatermark = Guid.NewGuid();
 
                 //remove from cache
                 file.ParentDirectory.Children.Remove(file);
+                NodesCache.Remove(file.ID);
                 //do not remove the parent from the file: need it for the client event
 
                 //remove from disk
@@ -860,31 +911,18 @@ namespace Soundbox
             if (file == null)
                 return null;
 
-            return GetCleanFileFromDirectory(GetSoundsTree(), file) as T;
-        }
-
-        /// <summary>
-        /// Recursive search function for <see cref="GetCleanFile{T}(T)"/>.
-        /// For testing only until we implemented a look up table.
-        /// </summary>
-        /// <param name="directory"></param>
-        /// <param name="file"></param>
-        /// <returns></returns>
-        private SoundboxNode GetCleanFileFromDirectory(SoundboxDirectory directory, SoundboxNode file)
-        {
-            if (directory.ID == file.ID)
-                return directory;
-
-            foreach(var child in directory.Children)
+            try
             {
-                if (child.ID == file.ID)
-                    return child;
-                if(child is SoundboxDirectory)
+                DatabaseLock.EnterReadLock();
+
+                if (NodesCache.TryGetValue(file.ID, out var node))
                 {
-                    var result = GetCleanFileFromDirectory(child as SoundboxDirectory, file);
-                    if (result != null)
-                        return result;
+                    return node as T;
                 }
+            }
+            finally
+            {
+                DatabaseLock.ExitReadLock();
             }
 
             return null;
@@ -1194,10 +1232,5 @@ namespace Soundbox
             //TODO
             Console.Error.Write(ex.ToString());
         }
-    }
-
-    public interface ISoundboxHubProvider
-    {
-        ISoundboxClient GetHub();
     }
 }

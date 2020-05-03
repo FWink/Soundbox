@@ -1,16 +1,18 @@
 ﻿import * as signalR from '@microsoft/signalr';
-import { Observable, Subject, ReplaySubject, BehaviorSubject } from 'rxjs';
+import { Observable, Subject, ReplaySubject, BehaviorSubject, Subscription } from 'rxjs';
 import { IServerSettings, IServerSettingsRequest } from './ServerSettings';
 import { ISound, isSound } from './Sound';
 import { ISoundboxDirectory, isDirectory } from './SoundboxDirectory';
 import { ISoundPlaybackRequest } from './SoundPlaybackRequest';
-import { ISoundboxFileBase } from './SoundboxFile';
+import { ISoundboxFileBase, ISoundboxFile } from './SoundboxFile';
 import { IPlayingNow } from './PlayingNow';
 import { ISoundUpload, ISoundUploadFull } from './Upload';
 import { IFileResult } from './results/FileResult';
 import { SoundboxError } from './errors/SoundboxError';
 import { ResultStatusCode, fromHttp } from './results/ResultStatusCode';
 import { IUploadStatus, IUploadProgress } from './UploadStatus';
+import { StorageProvider } from './StorageProvider';
+import { SoundsDatabase } from './SoundsDatabase';
 
 /**
  * Represents a Soundbox server with a two-way realtime communication channel (via SignalR).
@@ -23,6 +25,11 @@ export class Soundbox {
      * The base URL of the server. We can derive the SignalR endpoint and the REST endpoints from this.
      */
     protected readonly baseUrl: string;
+
+    /**
+     * Persistent storage where we keep the list of sounds between sessions.
+     * */
+    protected readonly storage: StorageProvider;
 
     protected connection: signalR.HubConnection;
     /**
@@ -40,13 +47,15 @@ export class Soundbox {
 
     /**
      * 
+     * @param storage Persistent storage where the soundbox keeps a list of available sounds to prevent loading it from the server on each new session, thus decreasing the startup time.
      * @param baseUrl The Soundbox server's base URL. Omit to have it detected from the current browser location.
      */
-    public constructor(baseUrl?: string) {
+    public constructor(storage: StorageProvider, baseUrl?: string) {
         if (!baseUrl) {
             baseUrl = "";
         }
         this.baseUrl = baseUrl;
+        this.storage = storage;
     }
 
     /**
@@ -129,6 +138,7 @@ export class Soundbox {
 
         const promises: Promise<any>[] = [];
 
+        promises.push(this.loadSounds());
         promises.push(
             this.connection.invoke("GetVolume")
                 .then((volume: number) => {
@@ -193,16 +203,148 @@ export class Soundbox {
 
     //#region Sounds
 
+    protected static readonly STORAGE_KEY_SOUNDS_TREE = "soundstree";
+
+    protected currentSoundsTree: ISoundboxDirectory;
+
+    protected soundsTreeFetch: Subject<ISoundboxDirectory> = new ReplaySubject<ISoundboxDirectory>(1);
+
+    /**
+     * ID that uniquely identifies a query process of the server's list of sound.
+     * If the server's sound list changes while we're currently fetching it (i.e. an OnFileEvent arrives while we're recursively calling GetSounds)
+     * then we need to restart that query. We'll increment this ID which causes the active task to terminate and start a new query.
+     */
+    protected soundsQueryId: number = 0;
+
+    /**
+     * Wrapper for server GetSounds RPC
+     * @param directory
+     * @param recursive
+     */
+    protected serverGetSounds(directory: ISoundboxDirectory, recursive: boolean): Promise<ISoundboxDirectory[]> {
+        return this.connection.invoke("GetSounds", directory, recursive);
+    }
+
+    /**
+     * Loads the entire tree of sounds from the server on startup. If we have sounds stored in {@link storage} then we do a quick watermark comparison with the server's root directory.
+     * In best case we detect that our list is up-to-date and do not need to load anything further from the server.
+     * Otherwise the server's files and directories are loaded as needed.
+     * */
+    protected loadSounds(): Promise<ISoundboxDirectory> {
+
+        let serverPromise = this.serverGetSounds(null, false);
+        let storagePromise = this.storage.get(Soundbox.STORAGE_KEY_SOUNDS_TREE);
+
+        let fromStorage: ISoundboxDirectory;
+        let fromServer: ISoundboxDirectory;
+
+        return serverPromise
+            .then((serverRootWrapper: ISoundboxDirectory[]) => {
+                fromServer = serverRootWrapper[0];
+                return storagePromise;
+            })
+            .then((storageRootDirectory: ISoundboxDirectory) => {
+                fromStorage = storageRootDirectory;
+            })
+            .then(() => {
+
+                if (fromStorage) {
+                    //perform a quick watermark check
+                    if (fromStorage.watermark == fromServer.watermark) {
+                        //we are up-to-date
+                        return fromStorage;
+                    }
+                    //start fetching at the root level
+                    return this.loadDirectory(fromServer, new SoundsDatabase(fromStorage));
+                }
+                else {
+                    //nothing stored, fetch the entire file tree
+                    return this.loadDirectory(fromServer, null);
+                }
+            })
+            .then((root: ISoundboxDirectory) => {
+                this.currentSoundsTree = root;
+                this.soundsTreeFetch.next(root);
+
+                return root;
+            });
+    }
+
+    /**
+     * Compares the given directory's content with what is stored in the given database.
+     * If there are differences then the directory is updated in the database and its descendants are fetched from the server as required.
+     * If the database is null then we never performed a full fetch in the first place.
+     * This is only ever called if we never performed a full fetch OR we're performing an update from the server and the given directory is new or its watermark does not match our stored watermark.
+     * @param directory Directory fetched from the server via GetSounds. Its children have not been fetched yet
+     * @param database
+     */
+    protected loadDirectory(directory: ISoundboxDirectory, database: SoundsDatabase): Promise<ISoundboxDirectory> {
+
+        //load children
+        return this.serverGetSounds(this.minimizeFile(directory), false)
+            .then((children: ISoundboxFile[]) => {
+
+                let childrenLoaded: Promise<ISoundboxFile>[] = [];
+
+                for (let child of children) {
+                    if (isDirectory(child)) {
+                        if (database) {
+                            let directoryStored = database.findById(child.id) as ISoundboxDirectory;
+                            if (!directoryStored || child.watermark != directoryStored.watermark) {
+                                //not stored or we detected a difference => load directory
+                                childrenLoaded.push(this.loadDirectory(child, database));
+                            }
+                            else {
+                                //no difference, continue using what we have stored
+                                childrenLoaded.push(Promise.resolve(directoryStored));
+                            }
+                        }
+                        else {
+                            //first full fetch, nothing is stored => load directory
+                            childrenLoaded.push(this.loadDirectory(child, database));
+                        }
+                    }
+                    else {
+                        //use the sound file from the server response
+                        childrenLoaded.push(Promise.resolve(child));
+                    }
+                }
+
+                return Promise.all(childrenLoaded);
+            })
+            .then((children: ISoundboxFile[]) => {
+                //at this point we have updated all descendants
+                directory.children = children;
+                //make sure they all point to the right directory
+                for (let child of children) {
+                    child.parentDirectory = directory;
+                }
+
+                return directory;
+            });
+    }
+
     /**
      * Returns all avilable sounds from the server in no particular order.
      * */
     public getSounds(): Promise<ISound[]> {
         //TODO temporary
-        return this.connection.invoke("GetSounds", null, true)
-            .then((directories: ISoundboxDirectory[]) => {
-                const root = directories[0];
-                return this.getSoundsFromDirectoryLocal(root);
+        let resolved = false;
+
+        return new Promise<ISound[]>((resolve, reject) => {
+            let soundsSubscription: Subscription;
+            soundsSubscription = this.soundsTreeFetch.subscribe(root => {
+                //we get into trouble here if the subscription immediately fires a value
+                if(soundsSubscription)
+                    soundsSubscription.unsubscribe();
+
+                if (resolved)
+                    return;
+                resolved = true;
+
+                resolve(this.getSoundsFromDirectoryLocal(root));
             });
+        });
     }
 
     /**

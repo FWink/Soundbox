@@ -96,6 +96,7 @@
     <TypeScriptCompile Include="src\app\app.module.ts" />
     <TypeScriptCompile Include="src\environments\environment.prod.ts" />
     <TypeScriptCompile Include="src\environments\environment.ts" />
+    <TypeScriptCompile Include="src\lib\soundboxjs\DefaultStorageProvider.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\errors\SoundboxError.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\PlaybackOptions.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\PlayingNow.ts" />
@@ -110,6 +111,8 @@
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundboxFile.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundMetaData.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundPlaybackRequest.ts" />
+    <TypeScriptCompile Include="src\lib\soundboxjs\SoundsDatabase.ts" />
+    <TypeScriptCompile Include="src\lib\soundboxjs\StorageProvider.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\Upload.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\UploadStatus.ts" />
     <TypeScriptCompile Include="src\main.ts" />

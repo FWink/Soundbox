@@ -34,11 +34,60 @@ namespace Soundbox
         /// </returns>
         public async Task<ICollection<SoundboxNode>> GetSounds(SoundboxDirectory directory = null, bool recursive = false)
         {
-            //TODO
-            return new SoundboxNode[]
+            SoundboxDirectory serverDirectory = await GetSoundbox().GetDirectory(directory);
+
+            if(directory == null && recursive)
             {
-                GetSoundbox().GetSoundsTree()
-            };
+                //return the entire tree
+                return new SoundboxNode[]
+                {
+                    serverDirectory
+                };
+            }
+
+            if(directory == null)
+            {
+                //root directory without children
+                return new SoundboxNode[]
+                {
+                    serverDirectory.Flatten()
+                };
+            }
+
+            //return the requested directory's children
+            if (serverDirectory == null)
+                //invalid directory has been passed
+                return null;
+
+            if (recursive)
+                return serverDirectory.Children;
+            //else: flatten the result; do not return the children's children
+
+            ICollection<SoundboxNode> children = new List<SoundboxNode>();
+            foreach(var child in serverDirectory.Children)
+            {
+                children.Add(FlattenNode(child));
+            }
+
+            return children;
+        }
+
+        /// <summary>
+        /// Flattens the given <see cref="SoundboxNode"/>: if it is a <see cref="SoundboxFile"/> it is returned without modification.
+        /// If it is a <see cref="SoundboxDirectory"/> then a copy without children is returned.
+        /// </summary>
+        /// <param name="node"></param>
+        /// <returns></returns>
+        protected SoundboxNode FlattenNode(SoundboxNode node)
+        {
+            if(node is SoundboxDirectory directory)
+            {
+                return directory.Flatten();
+            }
+            else
+            {
+                return node;
+            }
         }
 
         /// <summary>
