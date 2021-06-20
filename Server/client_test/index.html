@@ -30,8 +30,13 @@
                 });
 
                 document.getElementById("btnUpload").addEventListener("click", () => {
-                    const file = document.getElementById("inpFileUpload").files[0];
-                    new FileUpload(file, getSelectedUploadDirectory());
+
+                    const files = document.getElementById("inpFileUpload").files;
+
+                    for (let i = 0; i < files.length; ++i) {
+                        const file = files[i];
+                        new FileUpload(file, getSelectedUploadDirectory());
+                    }
                 });
 
                 document.getElementById("btnNewDirectory").addEventListener("click", () => {
@@ -307,7 +312,7 @@
         <input type="button" id="btnStop" value="Stop" />
     </div>
     <div>
-        <input type="file" id="inpFileUpload" />
+        <input type="file" id="inpFileUpload" multiple />
         <input type="button" id="btnUpload" value="Upload" />
     </div>
     <div>

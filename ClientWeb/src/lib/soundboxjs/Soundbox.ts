@@ -13,6 +13,7 @@ import { ResultStatusCode, fromHttp } from './results/ResultStatusCode';
 import { IUploadStatus, IUploadProgress } from './UploadStatus';
 import { StorageProvider } from './StorageProvider';
 import { SoundsDatabase } from './SoundsDatabase';
+import { ISoundboxFileChangeEvent, ISoundboxFileMoveEvent, SoundboxFileChangeEventType } from './SoundboxFileChangeEvent';
 
 /**
  * Represents a Soundbox server with a two-way realtime communication channel (via SignalR).
@@ -43,7 +44,7 @@ export class Soundbox {
     /**
      * Used in {@link start} to update the caller should {@link connecting} be true when the method is called (only one connection attempt may be underway at once).
      */
-    protected connectingSubject: Subject<void>;
+    protected connectingPromise: Promise<any>;
 
     /**
      * 
@@ -58,6 +59,8 @@ export class Soundbox {
         this.storage = storage;
     }
 
+    //#region connection
+
     /**
      * Starts the Soundbox handler and connects to the server or ensures that we are connected to the server for repeated calls.
      * Promise resolves once the server connection has been established.
@@ -66,25 +69,24 @@ export class Soundbox {
      * * fetch settings (see {@link settings})
      * To not miss any updates you should attach your subscribers before calling this method.
      */
-    public start(): Promise<void> {
+    public start(): Promise<any> {
         if (this.connected) {
             //already connected
             return Promise.resolve();
         }
         else if (this.connecting) {
-            return this.connectingSubject.toPromise();
+            return this.connectingPromise;
         }
 
         this.connection?.stop();
 
         this.connecting = true;
-        this.connectingSubject = new Subject<void>();
 
         const connection = new signalR.HubConnectionBuilder()
             .withUrl(this.baseUrl + "/api/v1/ws")
             .build();
 
-        return connection.start()
+        this.connectingPromise = connection.start()
             .then(() => {
                 this.connection = connection;
 
@@ -98,6 +100,9 @@ export class Soundbox {
                 this.connection.on("OnSoundsPlayingChanged", (playingNow: IPlayingNow[]) => {
                     this.onPlaybackChanged(playingNow);
                 });
+                this.connection.on("OnFileEvent", (event: ISoundboxFileChangeEvent) => {
+                    this.onFileChangeEvent(event);
+                });
             })
             //further setup for each reconnect
             .then(() => {
@@ -105,12 +110,12 @@ export class Soundbox {
             })
             .then(() => {
                 this.connected = true;
-                this.connectingSubject.next();
-                this.connectingSubject.complete();
             })
             .finally(() => {
                 this.connecting = false;
+                this.connectingPromise = null;
             });
+        return this.connectingPromise;
     }
 
     /**
@@ -157,6 +162,8 @@ export class Soundbox {
 
         return Promise.all(promises);
     }
+
+    //#endregion
 
     //#region volume
 
@@ -207,7 +214,11 @@ export class Soundbox {
 
     protected currentSoundsTree: ISoundboxDirectory;
 
-    protected soundsTreeFetch: Subject<ISoundboxDirectory> = new ReplaySubject<ISoundboxDirectory>(1);
+    /**
+     * Promise that resolves when updating our local list of sounds has completed.
+     * Used as a queue-like mechanism: soundsFetch = soundsFetch.then(...)
+     */
+    protected soundsFetch: Promise<any> = Promise.resolve();
 
     /**
      * ID that uniquely identifies a query process of the server's list of sound.
@@ -238,7 +249,7 @@ export class Soundbox {
         let fromStorage: ISoundboxDirectory;
         let fromServer: ISoundboxDirectory;
 
-        return serverPromise
+        let result = serverPromise
             .then((serverRootWrapper: ISoundboxDirectory[]) => {
                 fromServer = serverRootWrapper[0];
                 return storagePromise;
@@ -264,10 +275,14 @@ export class Soundbox {
             })
             .then((root: ISoundboxDirectory) => {
                 this.currentSoundsTree = root;
-                this.soundsTreeFetch.next(root);
 
                 return root;
             });
+
+        this.soundsFetch = result
+            .then(() => this.onSoundListUpdated());
+
+        return result;
     }
 
     /**
@@ -325,26 +340,175 @@ export class Soundbox {
     }
 
     /**
-     * Returns all avilable sounds from the server in no particular order.
-     * */
-    public getSounds(): Promise<ISound[]> {
-        //TODO temporary
-        let resolved = false;
+     * Returns our local copy of the given server file.
+     * @param file
+     */
+    protected getFile<T extends ISoundboxFile>(file: T): T {
+        return this.findFile(this.currentSoundsTree, file.id) as T;
+    }
 
-        return new Promise<ISound[]>((resolve, reject) => {
-            let soundsSubscription: Subscription;
-            soundsSubscription = this.soundsTreeFetch.subscribe(root => {
-                //we get into trouble here if the subscription immediately fires a value
-                if(soundsSubscription)
-                    soundsSubscription.unsubscribe();
+    /**
+     * Returns our local copy of the file with the given id.
+     * @param directory
+     * @param id
+     */
+    protected findFile(directory: ISoundboxDirectory, id: string): ISoundboxFile {
+        if (directory.id == id)
+            return directory;
 
-                if (resolved)
+        for (let child of directory.children) {
+            if (isDirectory(child)) {
+                //search recursively
+                let found = this.findFile(child, id);
+                if (found)
+                    return found;
+
+                continue;
+            }
+
+            if (child.id == id)
+                return child;
+        }
+
+        return null;
+    }
+
+    /**
+     * Recursively updates the watermark in the given and all its ancestor directories.
+     * @param file If it is a file, then its parent is used instead.
+     * @param watermark
+     */
+    protected updateWatermark(file: ISoundboxFile, watermark: string) {
+
+        let directory: ISoundboxDirectory;
+        if (isDirectory(file))
+            directory = file;
+        else
+            directory = file.parentDirectory;
+
+        while (directory) {
+            directory.watermark = watermark;
+            directory = directory.parentDirectory;
+        }
+    }
+
+    //#region events
+    //TODO this is all a placeholder implementation. eventually this will be re-structured to utilize a directory-based approach
+
+    /**
+     * Alias of {@link sounds}. Used to emit changes in the list of sounds.
+     */
+    protected readonly soundsSubject: Subject<ISound[]> = new ReplaySubject<ISound[]>(1);
+
+    /**
+     * Updated whenever the Soundbox volume is changed on the server. That includes when the volume is changed from this Soundbox instance via {@link setVolume}.
+     */
+    public readonly sounds: Observable<ISound[]> = this.soundsSubject;
+
+    /**
+     * Called when the server notifies us about an update to the list of sounds.
+     * @param event
+     */
+    protected onFileChangeEvent(event: ISoundboxFileChangeEvent) {
+        //event.type is sent as string
+        event.event = SoundboxFileChangeEventType[event.event as any as string as keyof typeof SoundboxFileChangeEventType];
+
+        this.soundsFetch = this.soundsFetch
+            .then(() => {
+                let file = event.file;
+
+                let watermarkNow: string;
+                if (isDirectory(file)) {
+                    watermarkNow = file.watermark;
+                }
+                else {
+                    watermarkNow = file.parentDirectory.watermark;
+                }
+
+                if (this.currentSoundsTree.watermark == watermarkNow) {
+                    //we seemed to have fetched this updated already. nothing to do
                     return;
-                resolved = true;
+                }
+                if (this.currentSoundsTree.watermark != event.previousWatermark) {
+                    //need to re-sync
+                    return this.loadSounds();
+                }
 
-                resolve(this.getSoundsFromDirectoryLocal(root));
-            });
-        });
+                let parentDirectory = this.getFile(file.parentDirectory);
+
+                if (event.event == SoundboxFileChangeEventType.ADDED) {
+                    //add to local database
+                    parentDirectory.children.push(file);
+                    file.parentDirectory = parentDirectory;
+
+                    this.updateWatermark(file, watermarkNow);
+                }
+                else if (event.event == SoundboxFileChangeEventType.MODIFIED) {
+                    //update local properties
+                    let fileLocal = this.getFile(file);
+
+                    fileLocal.iconUrl = file.iconUrl;
+                    fileLocal.name = file.name;
+                    fileLocal.tags = file.tags;
+                    if (isSound(file) && isSound(fileLocal)) {
+                        fileLocal.metaData = file.metaData;
+                    }
+
+                    this.updateWatermark(fileLocal, watermarkNow);
+                }
+                else if (event.event == SoundboxFileChangeEventType.DELETED) {
+                    //delete from local directory
+                    let deleteDirectory = parentDirectory;
+
+                    for (let i = 0; i < deleteDirectory.children.length; ++i) {
+                        let testFile = deleteDirectory.children[i];
+
+                        if (testFile.id == file.id) {
+                            //found it => delete
+                            deleteDirectory.children.splice(i, 1);
+                            break;
+                        }
+                    }
+
+                    this.updateWatermark(parentDirectory, watermarkNow);
+                }
+                else if (event.event == SoundboxFileChangeEventType.MOVED) {
+                    //delete from local directory
+                    let deleteDirectory = this.getFile(
+                        (event as ISoundboxFileMoveEvent).fromDirectory
+                    );
+
+                    let deleted: ISoundboxFile;
+                    for (let i = 0; i < deleteDirectory.children.length; ++i) {
+                        let testFile = deleteDirectory.children[i];
+
+                        if (testFile.id == file.id) {
+                            //found it => delete
+                            deleted = testFile;
+                            deleteDirectory.children.splice(i, 1);
+                            break;
+                        }
+                    }
+
+                    //add deleted to new directory
+                    parentDirectory.children.push(deleted);
+                    deleted.parentDirectory = parentDirectory;
+
+                    this.updateWatermark(deleteDirectory, watermarkNow);
+                    this.updateWatermark(deleted, watermarkNow);
+                }
+            })
+            .then(() => this.onSoundListUpdated());
+    }
+
+    /**
+     * Called whenever the content of {@link #currentSoundsTree} has changed and is now in a valid state.
+     **/
+    protected onSoundListUpdated() {
+        //update clients
+        this.soundsSubject.next(
+            this.getSoundsFromDirectoryLocal(this.currentSoundsTree)
+        );
     }
 
     /**
@@ -366,6 +530,8 @@ export class Soundbox {
 
         return sounds;
     }
+
+    //#endregion
 
     //#endregion
 
@@ -549,7 +715,7 @@ export class Soundbox {
      * @param sound
      * @param directory
      */
-    public upload(file: File, sound: ISoundUpload, directory?: ISoundboxDirectory): IUploadStatus {
+    public upload(file: File, sound?: ISoundUpload, directory?: ISoundboxDirectory): IUploadStatus {
 
         //finished true: upload is done or aborted or an error occurred or...
         let finished: boolean = false;
@@ -580,10 +746,13 @@ export class Soundbox {
         //start the upload asynchronously
         const done = new Promise<ISound>((resolve, reject) => {
 
+            if (!sound) {
+                sound = {};
+            }
+
             //add the file name to the request
             const soundFull: ISoundUploadFull = {
-                name: sound.name,
-                tags: sound.tags,
+                ...sound,
                 fileName: file.name
             };
             sound = soundFull;

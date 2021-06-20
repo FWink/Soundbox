@@ -1,5 +1,5 @@
 ﻿<div>
-    <button type="button" *ngFor="let sound of sounds" (click)="play(sound)">{{sound.name}}</button>
+    <button type="button" *ngFor="let sound of soundbox.sounds | async" (click)="play(sound)">{{sound.name}}</button>
 </div>
 <div>
     Pitch:

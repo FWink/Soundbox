@@ -52,8 +52,11 @@ namespace Soundbox
         /// </param>
         public FileResult(ResultStatus status, SoundboxNode file, Guid? previousWatermark, SoundboxDirectory fromDirectory = null) : base(status)
         {
-            File = file;
+            if (file != null)
+                File = file.Flatten(true);
             PreviousWatermark = previousWatermark;
+            if (fromDirectory != null)
+                FromDirectory = fromDirectory.Flatten() as SoundboxDirectory;
         }
     }
 }

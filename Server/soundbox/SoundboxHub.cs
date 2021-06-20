@@ -66,28 +66,10 @@ namespace Soundbox
             ICollection<SoundboxNode> children = new List<SoundboxNode>();
             foreach(var child in serverDirectory.Children)
             {
-                children.Add(FlattenNode(child));
+                children.Add(child.Flatten());
             }
 
             return children;
-        }
-
-        /// <summary>
-        /// Flattens the given <see cref="SoundboxNode"/>: if it is a <see cref="SoundboxFile"/> it is returned without modification.
-        /// If it is a <see cref="SoundboxDirectory"/> then a copy without children is returned.
-        /// </summary>
-        /// <param name="node"></param>
-        /// <returns></returns>
-        protected SoundboxNode FlattenNode(SoundboxNode node)
-        {
-            if(node is SoundboxDirectory directory)
-            {
-                return directory.Flatten();
-            }
-            else
-            {
-                return node;
-            }
         }
 
         /// <summary>

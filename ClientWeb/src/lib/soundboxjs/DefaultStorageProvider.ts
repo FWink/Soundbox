@@ -40,7 +40,7 @@ export class DefaultStorageProvider extends StorageProvider {
 
         return new Promise<any>((resolve, reject) => {
             this.webStorage.setItem(key, JSON.stringify(value));
-            resolve();
+            resolve(undefined);
         });
     }
 
@@ -49,7 +49,7 @@ export class DefaultStorageProvider extends StorageProvider {
 
         return new Promise<any>((resolve, reject) => {
             this.webStorage.removeItem(key);
-            resolve();
+            resolve(undefined);
         });
     }
 }

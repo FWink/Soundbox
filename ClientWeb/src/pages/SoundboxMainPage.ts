@@ -9,7 +9,6 @@ import { IUploadStatus } from '../lib/soundboxjs/UploadStatus';
 export class SoundboxMainPage implements OnInit {
 
     soundbox: Soundbox;
-    sounds: ISound[] = [];
 
     pitch: number = 100;
     uploadName: string;
@@ -21,13 +20,7 @@ export class SoundboxMainPage implements OnInit {
     }
 
     ngOnInit(): void {
-        this.soundbox.start()
-            .then(() => {
-                return this.soundbox.getSounds();
-            })
-            .then(sounds => {
-                this.sounds = sounds;
-            });
+        this.soundbox.start();
     }
 
     play(sound: ISound) {

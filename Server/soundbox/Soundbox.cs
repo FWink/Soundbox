@@ -470,7 +470,7 @@ namespace Soundbox
                 GetHub().OnFileEvent(new SoundboxFileChangeEvent()
                 {
                     Event = SoundboxFileChangeEvent.Type.ADDED,
-                    File = newFile,
+                    File = FlattenForEvent(newFile),
                     PreviousWatermark = previousWatermark
                 });
 
@@ -690,7 +690,7 @@ namespace Soundbox
                 GetHub().OnFileEvent(new SoundboxFileChangeEvent()
                 {
                     Event = SoundboxFileChangeEvent.Type.MODIFIED,
-                    File = localFile,
+                    File = FlattenForEvent(localFile),
                     PreviousWatermark = previousWatermark
                 });
 
@@ -785,7 +785,7 @@ namespace Soundbox
                 GetHub().OnFileEvent(new SoundboxFileMoveEvent()
                 {
                     Event = SoundboxFileChangeEvent.Type.MOVED,
-                    File = file,
+                    File = FlattenForEvent(file),
                     FromDirectory = oldParent,
                     PreviousWatermark = previousWatermark
                 });
@@ -851,7 +851,7 @@ namespace Soundbox
                 GetHub().OnFileEvent(new SoundboxFileChangeEvent()
                 {
                     Event = SoundboxFileChangeEvent.Type.DELETED,
-                    File = file,
+                    File = FlattenForEvent(file),
                     PreviousWatermark = previousWatermark
                 });
 
@@ -940,6 +940,17 @@ namespace Soundbox
                 return directory.IsRootDirectory();
             }
             return false;
+        }
+
+        /// <summary>
+        /// <see cref="SoundboxNode.Flatten"/>s the given node but preserves its <see cref="SoundboxNode.ParentDirectory"/> (in a flattened state).
+        /// This the form we send out as events when the file tree changes.
+        /// </summary>
+        /// <param name="file"></param>
+        /// <returns></returns>
+        protected SoundboxNode FlattenForEvent(SoundboxNode file)
+        {
+            return file.Flatten(true);
         }
 
         #endregion

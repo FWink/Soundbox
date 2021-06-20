@@ -18,5 +18,24 @@ namespace Soundbox
             }
             set => _metaData = value;
         }
+
+        public override SoundboxNode Flatten(bool withParent = false)
+        {
+            var flattened =  new Sound()
+            {
+                ID = this.ID,
+                Name = this.Name,
+                IconUrl = this.IconUrl,
+                Tags = this.Tags,
+                ParentDirectory = null,
+                AbsoluteFileName = this.AbsoluteFileName,
+                FileName = this.FileName,
+                _metaData = this._metaData,
+                Flattened = true
+            };
+            if (withParent && this.ParentDirectory != null)
+                flattened.ParentDirectory = this.ParentDirectory.Flatten() as SoundboxDirectory;
+            return flattened;
+        }
     }
 }

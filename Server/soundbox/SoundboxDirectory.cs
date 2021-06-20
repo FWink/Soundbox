@@ -46,9 +46,9 @@ namespace Soundbox
         /// This is often used when returning files to a client when only a restricted set of information should be passed instead of the entire file tree.
         /// </summary>
         /// <returns></returns>
-        public SoundboxDirectory Flatten()
+        public override SoundboxNode Flatten(bool withParent = false)
         {
-            return new SoundboxDirectory()
+            var flattened = new SoundboxDirectory()
             {
                 ID = this.ID,
                 Name = this.Name,
@@ -56,8 +56,12 @@ namespace Soundbox
                 Tags = this.Tags,
                 Watermark = this.Watermark,
                 Children = null,
-                ParentDirectory = null
+                ParentDirectory = null,
+                Flattened = true
             };
+            if (withParent && this.ParentDirectory != null)
+                flattened.ParentDirectory = this.ParentDirectory.Flatten() as SoundboxDirectory;
+            return flattened;
         }
     }
 }

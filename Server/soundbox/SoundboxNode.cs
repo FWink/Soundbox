@@ -18,10 +18,8 @@ namespace Soundbox
         public string Name;
         /// <summary>
         /// Parent directory. Not-null
-        /// TODO during serialization make sure we get a depth of 1 here.
         /// TODO Don't serialize this for persistent storage
         /// </summary>
-        [JsonIgnore]
         public SoundboxDirectory ParentDirectory;
 
         #region Extras
@@ -63,6 +61,34 @@ namespace Soundbox
             return ID == ID_DEFAULT_NEW_ITEM;
         }
 
+        #region "Serialization"
+
+        /// <summary>
+        /// Must be set to true in <see cref="Flatten(bool)"/>. False will cause the serializer to skip referenced nodes (such as <see cref="ParentDirectory"/>).
+        /// </summary>
+        protected bool Flattened;
+
+        /// <summary>
+        /// Flattens the node and returns a copy that does not link to any other node (such as <see cref="SoundboxNode.ParentDirectory"/>).
+        /// This is often used when returning files to a client when only a restricted set of information should be passed instead of the entire file tree.
+        /// </summary>
+        /// <param name="withParent">
+        /// True: the <see cref="ParentDirectory"/> should be returned as well in a flattened form.
+        /// </param>
+        /// <returns></returns>
+        public virtual SoundboxNode Flatten(bool withParent = false)
+        {
+            throw new NotImplementedException("Flatten is not implemented in \"abstract\" base class SoundboxNode");
+        }
+
+        public bool ShouldSerializeParentDirectory()
+        {
+            return Flattened && ParentDirectory != null;
+        }
+
+        #endregion
+
+        #region "Equality/HashCode"
         public override bool Equals(object obj)
         {
             return obj is SoundboxNode file &&
@@ -83,5 +109,6 @@ namespace Soundbox
         {
             return !(left == right);
         }
+        #endregion
     }
 }

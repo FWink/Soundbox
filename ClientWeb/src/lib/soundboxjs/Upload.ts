@@ -2,7 +2,7 @@
     /**
      * Display name
      * */
-    name: string;
+    name?: string;
 
     /**
      * List of tags/categories to easily find similar files. E.g. "Star Wars", "Funny", "Meme"...
