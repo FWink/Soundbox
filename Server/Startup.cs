@@ -73,6 +73,9 @@ namespace Soundbox
             services.AddTransient<IPreferencesProvider<int>, LiteDbPreferencesProvider<int>>();
             services.AddTransient<IPreferencesProvider<double>, LiteDbPreferencesProvider<double>>();
 
+            //TODO azure: check on azure config, then set up speech to text (or don't)
+            services.AddTransient<Speech.Recognition.ISpeechRecognitionServiceProvider, Speech.Recognition.Azure.AzureSpeechRecognitionServiceProvider>();
+
             services.AddControllers().AddNewtonsoftJson();
         }
 
