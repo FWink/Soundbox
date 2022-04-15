@@ -75,6 +75,7 @@ namespace Soundbox
 
             //TODO azure: check on azure config, then set up speech to text (or don't)
             services.AddTransient<Speech.Recognition.ISpeechRecognitionServiceProvider, Speech.Recognition.Azure.AzureSpeechRecognitionServiceProvider>();
+            services.AddTransient<Speech.Recognition.Azure.AzureSpeechRecognitionService>();
 
             services.AddControllers().AddNewtonsoftJson();
         }

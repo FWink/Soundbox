@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
+using Soundbox.Speech.Recognition;
 using Soundbox.Users;
 using Soundbox.Util;
 using System;
@@ -53,7 +54,8 @@ namespace Soundbox
             IServiceProvider serviceProvider,
             IHubContext<SoundboxHub, ISoundboxClient> hubContext,
             ISoundboxConfigProvider config,
-            IDatabaseProvider database)
+            IDatabaseProvider database,
+            ISpeechRecognitionServiceProvider speechRecognitionServiceProvider)
         {
             this.ServiceProvider = serviceProvider;
             this.HubContext = hubContext;
@@ -70,6 +72,8 @@ namespace Soundbox
             this.SoundsRoot = taskSoundsRoot.Result;
 
             BuildNodeCache(this.SoundsRoot);
+
+            SetupSpeechRecognition(speechRecognitionServiceProvider);
         }
 
         protected ISoundboxClient GetHub()
@@ -1234,6 +1238,62 @@ namespace Soundbox
             await SetVolume(currentVolumeSetting);
 
             return new ServerResult(BaseResultStatus.OK);
+        }
+
+        #endregion
+
+        #region "Speech Recognition"
+
+        /// <summary>
+        /// Called on application start to create an instance of <see cref="ISpeechRecognitionService"/> if enabled in the current configuration.
+        /// Then starts the speech recognition via <see cref="ISpeechRecognitionService.Start(SpeechRecognitionOptions)"/>
+        /// </summary>
+        /// <param name="provider"></param>
+        protected void SetupSpeechRecognition(ISpeechRecognitionServiceProvider provider)
+        {
+            if (provider == null)
+                //nothing to do, not installed
+                return;
+
+            //TODO stt: config
+            var config = new SpeechRecognitionConfig()
+            {
+                AudioSource = Audio.DeviceAudioSource.FromDefaultAudioDevice()
+            };
+
+            var recognizer = provider.GetSpeechRecognizer(config);
+            if (recognizer == null)
+                //no speech recognizer is installed for the current config
+                return;
+
+            recognizer.Recognized += (sender, e) =>
+            {
+                if (!e.Preliminary)
+                    return;
+
+                //try and match the spoken words
+                var sound = NodesCache.Values.Where(node => node is Sound).Cast<Sound>().FirstOrDefault(sound => e.Text.Replace(" ", "").Contains(Regex.Replace(sound.Name, "\\s+|\\..+$", ""), StringComparison.CurrentCultureIgnoreCase));
+                if (sound != null)
+                {
+                    Play(new User(), new SoundPlaybackRequest()
+                    {
+                        Sounds = new List<SoundPlayback>()
+                        {
+                            new SoundPlayback()
+                            {
+                                Sound = sound
+                            }
+                        }
+                    });
+                }
+            };
+
+            var options = new SpeechRecognitionOptions()
+            {
+                Languages = new List<string>() { "de", "en" }
+            };
+
+            recognizer.Start(options);
         }
 
         #endregion

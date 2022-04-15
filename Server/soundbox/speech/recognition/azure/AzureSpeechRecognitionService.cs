@@ -44,11 +44,23 @@ namespace Soundbox.Speech.Recognition.Azure
 
             try
             {
-                var speechConfig = SpeechConfig.FromEndpoint(new Uri($"{AzureRegion}.stt.speech.microsoft.com/speech/universal/v2"), AzureSubscriptionKey);
+                var speechConfig = SpeechConfig.FromEndpoint(new Uri($"wss://{AzureRegion}.stt.speech.microsoft.com/speech/universal/v2"), AzureSubscriptionKey);
                 speechConfig.SetProfanity(ProfanityOption.Raw);
                 speechConfig.SetProperty(PropertyId.SpeechServiceConnection_ContinuousLanguageIdPriority, "Latency");
 
-                var languageConfig = AutoDetectSourceLanguageConfig.FromLanguages(options.Languages.ToArray());
+                var languageConfig = AutoDetectSourceLanguageConfig.FromLanguages(options.Languages.Select(lang =>
+                {
+                    //convert language selections
+                    if (lang.Length == 2)
+                    {
+                        //two-letter code. select some default five-letter code instead.
+                        if (lang == "en")
+                            lang = "en-US";
+                        else
+                            lang = lang + "-" + lang.ToUpperInvariant();
+                    }
+                    return lang;
+                }).ToArray());
 
                 if (Config.AudioSource is DeviceAudioSource deviceAudioSource)
                 {
@@ -97,8 +109,8 @@ namespace Soundbox.Speech.Recognition.Azure
             }
             catch
             {
-                recognizer.Dispose();
-                audioConfig.Dispose();
+                recognizer?.Dispose();
+                audioConfig?.Dispose();
                 throw;
             }
 

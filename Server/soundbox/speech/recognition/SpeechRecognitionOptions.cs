@@ -13,6 +13,7 @@ namespace Soundbox.Speech.Recognition
     {
         /// <summary>
         /// List of languages that should be recognized in order of preference.
+        /// Format: either two-letter or five-letter language codes (e.g., "en" or "en-US"). You should prefer to use five-letter codes.
         /// </summary>
         public IList<string> Languages { get; set; }
 
