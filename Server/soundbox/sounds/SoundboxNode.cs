@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using JsonSubTypes;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,25 +10,28 @@ namespace Soundbox
     /// <summary>
     /// Represents either a <see cref="Sound"/> or a <see cref="SoundboxDirectory"/>. Or more formally: represents a node in a tree of files.
     /// </summary>
+    [JsonConverter(typeof(JsonSubtypes))]
+    [JsonSubtypes.KnownSubTypeWithProperty(typeof(SoundboxDirectory), "Children")]
+    [JsonSubtypes.FallBackSubType(typeof(Sound))]
     public class SoundboxNode
     {
-        public Guid ID;
+        public Guid ID { get; set; }
         /// <summary>
         /// Display name
         /// </summary>
-        public string Name;
+        public string Name { get; set; }
         /// <summary>
         /// Parent directory. Not-null
         /// TODO Don't serialize this for persistent storage
         /// </summary>
-        public SoundboxDirectory ParentDirectory;
+        public SoundboxDirectory ParentDirectory { get; set; }
 
         #region Extras
 
         /// <summary>
         /// Absolute URL for the file's icon/image.
         /// </summary>
-        public string IconUrl;
+        public string IconUrl { get; set; }
 
         private ICollection<string> _tags;
         /// <summary>
@@ -84,6 +88,39 @@ namespace Soundbox
         public bool ShouldSerializeParentDirectory()
         {
             return Flattened && ParentDirectory != null;
+        }
+
+        #endregion
+
+        #region "Copy"
+
+        /// <summary>
+        /// Creates a deep-ish copy of this node: simple properties such as lists of strings are deep copied,
+        /// while referenced nodes are shallow copied.
+        /// This results in a copy that is safe to use for before/after comparisons.
+        /// </summary>
+        /// <returns></returns>
+        public virtual SoundboxNode CompareCopy()
+        {
+            var copy = new SoundboxNode();
+            CompareCopyFill(copy);
+            return copy;
+        }
+
+        /// <summary>
+        /// Helper for <see cref="CompareCopy"/>: fills the given copy with our copied properties.
+        /// </summary>
+        /// <param name="other"></param>
+        protected virtual void CompareCopyFill(SoundboxNode other)
+        {
+            other.ID = this.ID;
+            other.Name = this.Name;
+            other.IconUrl = this.IconUrl;
+            if (this._tags != null)
+                other._tags = new List<string>(this._tags);
+            other.Flattened = this.Flattened;
+            //shallow copy:
+            other.ParentDirectory = this.ParentDirectory;
         }
 
         #endregion

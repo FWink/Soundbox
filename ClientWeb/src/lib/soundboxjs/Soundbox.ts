@@ -452,6 +452,7 @@ export class Soundbox {
                     fileLocal.tags = file.tags;
                     if (isSound(file) && isSound(fileLocal)) {
                         fileLocal.metaData = file.metaData;
+                        fileLocal.voiceActivation = file.voiceActivation;
                     }
 
                     this.updateWatermark(fileLocal, watermarkNow);

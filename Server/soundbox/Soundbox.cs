@@ -73,7 +73,7 @@ namespace Soundbox
 
             BuildNodeCache(this.SoundsRoot);
 
-            SetupSpeechRecognition(speechRecognitionServiceProvider);
+            SpeechRecognition_Setup(speechRecognitionServiceProvider);
         }
 
         protected ISoundboxClient GetHub()
@@ -319,6 +319,7 @@ namespace Soundbox
         /// <item><see cref="SoundboxNode.Name"/></item>
         /// <item><see cref="SoundboxFile.FileName"/></item>
         /// <item><see cref="SoundboxNode.Tags"/></item>
+        /// <item><see cref="Sound.VoiceActivation"/></item>
         /// </list>
         /// </param>
         /// <param name="directory">
@@ -367,6 +368,7 @@ namespace Soundbox
             soundClean.Name = sound.Name;
             soundClean.FileName = sound.FileName;
             soundClean.Tags = sound.Tags;
+            soundClean.VoiceActivation = sound.VoiceActivation;
             soundClean.ParentDirectory = directory;
 
             sound = soundClean;
@@ -477,6 +479,11 @@ namespace Soundbox
                     File = FlattenForEvent(newFile),
                     PreviousWatermark = previousWatermark
                 });
+
+                if (newFile is Sound sound)
+                {
+                    SpeechRecognition_OnSoundChanged(sound, null);
+                }
 
                 return new FileResult(BaseResultStatus.OK, newFile, previousWatermark);
             }
@@ -649,6 +656,7 @@ namespace Soundbox
         /// Edits the given file. These attributes are modified:<list type="bullet">
         /// <item><see cref="SoundboxNode.Name"/></item>
         /// <item><see cref="SoundboxNode.Tags"/></item>
+        /// <item><see cref="Sound.VoiceActivation"/></item>
         /// </list>
         /// </summary>
         /// <param name="file"></param>
@@ -679,9 +687,17 @@ namespace Soundbox
                 Guid previousWatermark = GetRootWatermark();
                 Guid newWatermark = Guid.NewGuid();
 
+                //make a copy of our local file for comparison
+                var localCopy = localFile.CompareCopy();
+
                 //modify our local file
                 localFile.Name = file.Name;
                 localFile.Tags = file.Tags;
+                
+                if (localFile is ISoundboxPlayable localPlayable && file is ISoundboxPlayable playable)
+                {
+                    localPlayable.VoiceActivation = playable.VoiceActivation;
+                }
 
                 //modify in database
                 //TODO async
@@ -697,6 +713,11 @@ namespace Soundbox
                     File = FlattenForEvent(localFile),
                     PreviousWatermark = previousWatermark
                 });
+
+                if (localFile is Sound newSound && localCopy is Sound oldSound)
+                {
+                    SpeechRecognition_OnSoundChanged(newSound, oldSound);
+                }
 
                 return new FileResult(BaseResultStatus.OK, localFile, previousWatermark);
             }
@@ -1249,7 +1270,7 @@ namespace Soundbox
         /// Then starts the speech recognition via <see cref="ISpeechRecognitionService.Start(SpeechRecognitionOptions)"/>
         /// </summary>
         /// <param name="provider"></param>
-        protected void SetupSpeechRecognition(ISpeechRecognitionServiceProvider provider)
+        protected void SpeechRecognition_Setup(ISpeechRecognitionServiceProvider provider)
         {
             if (provider == null)
                 //nothing to do, not installed
@@ -1294,6 +1315,17 @@ namespace Soundbox
             };
 
             recognizer.Start(options);
+        }
+
+        /// <summary>
+        /// Called when a sound has been added or changed.
+        /// Updates our speech recognition with the modified phrases if required.
+        /// </summary>
+        /// <param name="soundNew"></param>
+        /// <param name="soundOld"></param>
+        protected void SpeechRecognition_OnSoundChanged(Sound soundNew, Sound soundOld)
+        {
+
         }
 
         #endregion

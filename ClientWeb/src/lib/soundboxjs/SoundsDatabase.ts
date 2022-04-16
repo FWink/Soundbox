@@ -47,6 +47,7 @@ export class SoundsDatabase {
                     name: child.name,
                     tags: child.tags,
                     metaData: child.metaData,
+                    voiceActivation: child.voiceActivation,
                     parentDirectory: copy
                 };
 

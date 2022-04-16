@@ -22,6 +22,7 @@ namespace Soundbox
         /// <item><see cref="SoundboxNode.Name"/></item>
         /// <item><see cref="SoundboxFile.FileName"/></item>
         /// <item><see cref="SoundboxNode.Tags"/></item>
+        /// <item><see cref="Sound.VoiceActivation"/></item>
         /// </list>
         /// </param>
         /// <param name="directory"></param>

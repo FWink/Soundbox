@@ -7,7 +7,7 @@ namespace Soundbox
 {
     public class SoundboxDirectory : SoundboxNode
     {
-        public ICollection<SoundboxNode> Children = new List<SoundboxNode>();
+        public ICollection<SoundboxNode> Children { get; set; } = new List<SoundboxNode>();
 
         /// <summary>
         /// Unique watermark that gets updated whenever a change in <see cref="Children"/>
@@ -20,7 +20,7 @@ namespace Soundbox
         /// </list>
         /// However a sibling of 'directory' is unaffected.
         /// </summary>
-        public Guid Watermark;
+        public Guid Watermark { get; set; }
 
         public void AddChild(SoundboxNode file)
         {
@@ -63,5 +63,27 @@ namespace Soundbox
                 flattened.ParentDirectory = this.ParentDirectory.Flatten() as SoundboxDirectory;
             return flattened;
         }
+
+        #region "Copy"
+
+        public override SoundboxNode CompareCopy()
+        {
+            var other = new SoundboxDirectory();
+            CompareCopyFill(other);
+            return other;
+        }
+
+        protected override void CompareCopyFill(SoundboxNode other)
+        {
+            base.CompareCopyFill(other);
+            if (other is SoundboxDirectory directory)
+            {
+                directory.Watermark = this.Watermark;
+                if (this.Children?.Count > 0)
+                    directory.Children = new List<SoundboxNode>(this.Children);
+            }
+        }
+
+        #endregion
     }
 }

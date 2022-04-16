@@ -1,4 +1,6 @@
-﻿export interface ISoundUpload {
+﻿import { ISoundboxPlayable } from './SoundboxPlayable';
+
+export interface ISoundUpload extends ISoundboxPlayable {
     /**
      * Display name
      * */

@@ -154,6 +154,7 @@ namespace Soundbox
         /// Edits the given file. Currently these attributes are affected:<list type="bullet">
         /// <item><see cref="SoundboxNode.Name"/></item>
         /// <item><see cref="SoundboxNode.Tags"/></item>
+        /// <item><see cref="Sound.VoiceActivation"/></item>
         /// </list>
         /// </summary>
         /// <param name="file"></param>

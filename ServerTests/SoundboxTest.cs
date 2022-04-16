@@ -9,7 +9,7 @@ namespace Soundbox.Test
 {
     public class SoundboxTestWrapper : Soundbox
     {
-        public SoundboxTestWrapper(IServiceProvider serviceProvider, IHubContext<SoundboxHub, ISoundboxClient> hubContext, ISoundboxConfigProvider config, IDatabaseProvider database) : base(serviceProvider, hubContext, config, database)
+        public SoundboxTestWrapper(IServiceProvider serviceProvider, IHubContext<SoundboxHub, ISoundboxClient> hubContext, ISoundboxConfigProvider config, IDatabaseProvider database) : base(serviceProvider, hubContext, config, database, null)
         {
         }
 

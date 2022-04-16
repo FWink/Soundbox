@@ -33,5 +33,18 @@ namespace Soundbox
         {
             get => Length > 0;
         }
+
+        public SoundMetaData()
+        {
+        }
+
+        /// <summary>
+        /// Performs a deeop copy.
+        /// </summary>
+        /// <param name="other"></param>
+        public SoundMetaData(SoundMetaData other)
+        {
+            this._length = other._length;
+        }
     }
 }

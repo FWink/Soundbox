@@ -110,6 +110,8 @@
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundboxDirectory.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundboxFile.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundboxFileChangeEvent.ts" />
+    <TypeScriptCompile Include="src\lib\soundboxjs\SoundboxPlayable.ts" />
+    <TypeScriptCompile Include="src\lib\soundboxjs\SoundboxVoiceActivation.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundMetaData.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundPlaybackRequest.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundsDatabase.ts" />

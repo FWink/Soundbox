@@ -46,7 +46,13 @@ namespace Soundbox.Speech.Recognition.Azure
             {
                 var speechConfig = SpeechConfig.FromEndpoint(new Uri($"wss://{AzureRegion}.stt.speech.microsoft.com/speech/universal/v2"), AzureSubscriptionKey);
                 speechConfig.SetProfanity(ProfanityOption.Raw);
-                speechConfig.SetProperty(PropertyId.SpeechServiceConnection_ContinuousLanguageIdPriority, "Latency");
+
+                if (options.Languages.Count > 1)
+                {
+                    //enable continuous language detection when we have more than 1 language
+                    //this seems kind of buggy though, at times the speech recognition just simply doesn't work at all when this is enabled
+                    speechConfig.SetProperty(PropertyId.SpeechServiceConnection_ContinuousLanguageIdPriority, "Latency");
+                }
 
                 var languageConfig = AutoDetectSourceLanguageConfig.FromLanguages(options.Languages.Select(lang =>
                 {
