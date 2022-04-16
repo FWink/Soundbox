@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Soundbox.Speech.Recognition;
 using Soundbox.Users;
 using Soundbox.Util;
@@ -28,6 +29,8 @@ namespace Soundbox
             "flac"
         };
 
+        protected ILogger Logger;
+
         protected IHubContext<SoundboxHub, ISoundboxClient> HubContext;
 
         protected IServiceProvider ServiceProvider;
@@ -55,8 +58,12 @@ namespace Soundbox
             IHubContext<SoundboxHub, ISoundboxClient> hubContext,
             ISoundboxConfigProvider config,
             IDatabaseProvider database,
-            ISpeechRecognitionServiceProvider speechRecognitionServiceProvider)
+            ISpeechRecognitionServiceProvider speechRecognitionServiceProvider,
+            ILogger<Soundbox> logger)
         {
+            this.Logger = logger;
+            logger.LogInformation("Soundbox is starting");
+
             this.ServiceProvider = serviceProvider;
             this.HubContext = hubContext;
 
@@ -1355,8 +1362,7 @@ namespace Soundbox
 
         protected void Log(Exception ex)
         {
-            //TODO
-            Console.Error.Write(ex.ToString());
+            Logger.LogError(ex, "Soundbox error");
         }
     }
 }

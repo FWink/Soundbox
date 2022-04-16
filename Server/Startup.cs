@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Soundbox
 {
@@ -16,7 +17,17 @@ namespace Soundbox
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddCors();
+            services.AddLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.AddEventLog(settings =>
+                {
+                    //settings.SourceName = "Soundbox";
+                });
+                logging.AddConsole();
+            });
+
+            services.AddCors(); 
             services.AddSignalR().AddNewtonsoftJsonProtocol();
 
             services.AddSingleton<Soundbox>();
@@ -76,6 +87,7 @@ namespace Soundbox
             //TODO azure: check on azure config, then set up speech to text (or don't)
             services.AddTransient<Speech.Recognition.ISpeechRecognitionServiceProvider, Speech.Recognition.Azure.AzureSpeechRecognitionServiceProvider>();
             services.AddTransient<Speech.Recognition.Azure.AzureSpeechRecognitionService>();
+            services.AddTransient<Speech.Recognition.SpeechRecognizedEvent>();
 
             services.AddControllers().AddNewtonsoftJson();
         }

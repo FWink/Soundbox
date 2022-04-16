@@ -1,5 +1,6 @@
 ﻿using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
+using Microsoft.Extensions.Logging;
 using Soundbox.Audio;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,9 @@ namespace Soundbox.Speech.Recognition.Azure
     /// </summary>
     public class AzureSpeechRecognitionService : ISpeechRecognitionService
     {
+        protected ILogger Logger;
+        protected IServiceProvider ServiceProvider;
+
         //TODO azure: config
         protected string AzureRegion;
         protected string AzureSubscriptionKey;
@@ -26,7 +30,11 @@ namespace Soundbox.Speech.Recognition.Azure
 
         protected ICollection<IDisposable> Disposables = new List<IDisposable>();
 
-        public AzureSpeechRecognitionService() { }
+        public AzureSpeechRecognitionService(ILogger<AzureSpeechRecognitionService> logger, IServiceProvider serviceProvider)
+        {
+            this.Logger = logger;
+            this.ServiceProvider = serviceProvider;
+        }
 
         /// <summary>
         /// Sets the recognizer's config. For internal usage only.
@@ -44,6 +52,8 @@ namespace Soundbox.Speech.Recognition.Azure
 
             try
             {
+                Logger.LogInformation("Starting speech recognition");
+
                 var speechConfig = SpeechConfig.FromEndpoint(new Uri($"wss://{AzureRegion}.stt.speech.microsoft.com/speech/universal/v2"), AzureSubscriptionKey);
                 speechConfig.SetProfanity(ProfanityOption.Raw);
 
@@ -95,6 +105,8 @@ namespace Soundbox.Speech.Recognition.Azure
                 //prepare events
                 recognizer.Canceled += (sender, e) =>
                 {
+                    Logger.LogWarning($"Recognition stopped. reason={e.Reason}, erroCode={e.ErrorCode}, details={e.ErrorDetails}");
+
                     Stopped?.Invoke(this, new SpeechRecognitionStoppedEvent()
                     {
                         SpeechRecognizer = this,
@@ -113,8 +125,10 @@ namespace Soundbox.Speech.Recognition.Azure
                 //start recognizing
                 await recognizer.StartContinuousRecognitionAsync();
             }
-            catch
+            catch (Exception e)
             {
+                Logger.LogError(e, "Could not start continuous recognition");
+
                 recognizer?.Dispose();
                 audioConfig?.Dispose();
                 throw;
@@ -144,6 +158,8 @@ namespace Soundbox.Speech.Recognition.Azure
             var recognizer = SpeechRecognizer;
             if (recognizer != null)
             {
+                Logger.LogInformation("Stopping speech recognition");
+
                 Dispose(Disposables);
                 IsRunning = false;
                 SpeechRecognizer = null;
@@ -168,6 +184,8 @@ namespace Soundbox.Speech.Recognition.Azure
                 return;
             }
 
+            Logger.LogInformation("UpdateOptions");
+
             try
             {
                 await StopInt(false);
@@ -176,6 +194,8 @@ namespace Soundbox.Speech.Recognition.Azure
             catch (Exception e)
             {
                 //could not restart
+                Logger.LogError(e, "Could not restart recognition from UpdateOptions");
+
                 Stopped?.Invoke(this, new SpeechRecognitionStoppedEvent()
                 {
                     SpeechRecognizer = this,
@@ -200,14 +220,17 @@ namespace Soundbox.Speech.Recognition.Azure
         {
             var language = AutoDetectSourceLanguageResult.FromResult(e.Result);
 
-            Recognized?.Invoke(this, new SpeechRecognizedEvent()
-            {
-                SpeechRecognizer = this,
-                Preliminary = !final,
-                ResultID = e.Result.OffsetInTicks.ToString(),
-                Text = e.Result.Text,
-                Language = language.Language
-            });
+            string strEvent = final ? "Recognized" : "Recognizing";
+            Logger.LogTrace($"{strEvent} ({language.Language}): {e.Result.Text}");
+
+            var recognizedEvent = ServiceProvider.GetService(typeof(SpeechRecognizedEvent)) as SpeechRecognizedEvent;
+            recognizedEvent.SpeechRecognizer = this;
+            recognizedEvent.Preliminary = !final;
+            recognizedEvent.ResultID = e.Result.OffsetInTicks.ToString();
+            recognizedEvent.Text = e.Result.Text;
+            recognizedEvent.Language = language.Language;
+
+            Recognized?.Invoke(this, recognizedEvent);
         }
 
         #endregion

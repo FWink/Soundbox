@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -24,6 +25,13 @@ namespace Soundbox.Speech.Recognition
     /// </summary>
     public class SpeechRecognizedEvent : SpeechRecognitionBaseEvent
     {
+        protected ILogger Logger;
+
+        public SpeechRecognizedEvent(ILogger<SpeechRecognizedEvent> logger)
+        {
+            this.Logger = logger;
+        }
+
         /// <summary>
         /// Not unique per event, but per transcribed group of words.
         /// </summary>
@@ -43,7 +51,7 @@ namespace Soundbox.Speech.Recognition
         /// <summary>
         /// Optional: detected language.
         /// Might not be in the exact format that was passed to the recognizer via <see cref="SpeechRecognitionOptions.Languages"/>.
-        /// Should expact two-letter and five-letter codes here.
+        /// Should expect two-letter and five-letter codes here.
         /// </summary>
         public string Language { get; set; }
         /// <summary>
@@ -104,8 +112,10 @@ namespace Soundbox.Speech.Recognition
                 //nothing to match
                 return result;
 
+            int iCandidate = -1;
             foreach (var triggerWords in GetWordsNormalized(recognizable, Language))
             {
+                ++iCandidate;
                 if (triggerWords.Count == 0)
                     continue;
 
@@ -128,6 +138,8 @@ namespace Soundbox.Speech.Recognition
                     if (equals)
                     {
                         //matched
+                        Logger.LogTrace($"Result {ResultID}: Matched words '{recognizable.SpeechTriggers.ElementAt(iCandidate)}' in spoken '{Text}'[{newState.WordsUsedIndex}] ({Language})");
+
                         result.Success = true;
                         newState.AddWordsUsed(iWords + triggerWords.Count);
                         return result;
