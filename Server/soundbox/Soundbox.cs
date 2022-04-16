@@ -1266,6 +1266,7 @@ namespace Soundbox
         #region "Speech Recognition"
 
         protected ISpeechRecognitionService speechRecognizer;
+        protected SpeechRecognitionMatchState speechRecognitionState;
 
         /// <summary>
         /// Called on application start to create an instance of <see cref="ISpeechRecognitionService"/> if enabled in the current configuration.
@@ -1291,13 +1292,10 @@ namespace Soundbox
 
             recognizer.Recognized += (sender, e) =>
             {
-                if (!e.Preliminary)
-                    return;
-
                 //try and match the spoken words
-                //var sound = NodesCache.Values.Where(node => node is Sound).Cast<Sound>().FirstOrDefault(sound => e.Text.Replace(" ", "").Contains(Regex.Replace(sound.Name, "\\s+|\\..+$", ""), StringComparison.CurrentCultureIgnoreCase));
-                var sound = NodesCache.Values.Where(node => node is Sound).Cast<Sound>().FirstOrDefault(sound => sound.VoiceActivation?.SpeechTriggers.FirstOrDefault(trg => SpeechRecognition_NormalizeText(e.Text).Contains(SpeechRecognition_NormalizeText(trg), StringComparison.CurrentCultureIgnoreCase)) != null);
-                if (sound != null)
+                var match = e.Match(NodesCache.Values.Where(node => node is Sound).Cast<Sound>(), speechRecognitionState);
+                speechRecognitionState = match.State;
+                if (match.Success)
                 {
                     Play(new User(), new SoundPlaybackRequest()
                     {
@@ -1305,7 +1303,7 @@ namespace Soundbox
                         {
                             new SoundPlayback()
                             {
-                                Sound = sound
+                                Sound = match.Recognizable as Sound
                             }
                         }
                     });
@@ -1330,17 +1328,6 @@ namespace Soundbox
                 Languages = new List<string>() { "de", "en" },
                 Phrases = NodesCache.Values.Where(node => node is ISoundboxPlayable).Cast<ISoundboxPlayable>().SelectMany(sound => sound.VoiceActivation == null ? new List<string>() : sound.VoiceActivation.SpeechPhrases).ToList()
             };
-        }
-
-        private static readonly Regex SpeechRecognition_Normalization = new Regex("[.\\-_?!']|\\s+");
-        /// <summary>
-        /// This is temporary only: normalizes recognized text or the trigger text of a sound to compare them.
-        /// </summary>
-        /// <param name="text"></param>
-        /// <returns></returns>
-        protected string SpeechRecognition_NormalizeText(string text)
-        {
-            return SpeechRecognition_Normalization.Replace(text, "");
         }
 
         /// <summary>

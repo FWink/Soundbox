@@ -198,12 +198,15 @@ namespace Soundbox.Speech.Recognition.Azure
         /// <param name="final"></param>
         protected void OnSpeechEvent(SpeechRecognitionEventArgs e, bool final)
         {
+            var language = AutoDetectSourceLanguageResult.FromResult(e.Result);
+
             Recognized?.Invoke(this, new SpeechRecognizedEvent()
             {
                 SpeechRecognizer = this,
                 Preliminary = !final,
                 ResultID = e.Result.OffsetInTicks.ToString(),
-                Text = e.Result.Text
+                Text = e.Result.Text,
+                Language = language.Language
             });
         }
 

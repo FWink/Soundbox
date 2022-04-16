@@ -3,7 +3,7 @@
 namespace Soundbox.Speech.Recognition
 {
     /// <summary>
-    /// Represents a voice-activated "command": one or more text triggers (words or event entire sentences)
+    /// Represents a voice-activated "command": one or more text triggers (words or even entire sentences)
     /// that can be matched against the result of a speech recognition operation (<see cref="SpeechRecognizedEvent"/>).
     /// </summary>
     public interface ISpeechRecognizable

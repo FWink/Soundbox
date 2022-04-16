@@ -11,5 +11,9 @@ namespace Soundbox.Speech.Recognition
     public class SpeechRecognitionBaseEvent : EventArgs
     {
         public ISpeechRecognitionService SpeechRecognizer { get; set; }
+        /// <summary>
+        /// Timestamp at which the event had been generated.
+        /// </summary>
+        public long TimestampMillis { get; set; } = Environment.TickCount;
     }
 }
