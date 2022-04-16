@@ -1265,6 +1265,8 @@ namespace Soundbox
 
         #region "Speech Recognition"
 
+        protected ISpeechRecognitionService speechRecognizer;
+
         /// <summary>
         /// Called on application start to create an instance of <see cref="ISpeechRecognitionService"/> if enabled in the current configuration.
         /// Then starts the speech recognition via <see cref="ISpeechRecognitionService.Start(SpeechRecognitionOptions)"/>
@@ -1293,7 +1295,8 @@ namespace Soundbox
                     return;
 
                 //try and match the spoken words
-                var sound = NodesCache.Values.Where(node => node is Sound).Cast<Sound>().FirstOrDefault(sound => e.Text.Replace(" ", "").Contains(Regex.Replace(sound.Name, "\\s+|\\..+$", ""), StringComparison.CurrentCultureIgnoreCase));
+                //var sound = NodesCache.Values.Where(node => node is Sound).Cast<Sound>().FirstOrDefault(sound => e.Text.Replace(" ", "").Contains(Regex.Replace(sound.Name, "\\s+|\\..+$", ""), StringComparison.CurrentCultureIgnoreCase));
+                var sound = NodesCache.Values.Where(node => node is Sound).Cast<Sound>().FirstOrDefault(sound => sound.VoiceActivation?.SpeechTriggers.FirstOrDefault(trg => SpeechRecognition_NormalizeText(e.Text).Contains(SpeechRecognition_NormalizeText(trg), StringComparison.CurrentCultureIgnoreCase)) != null);
                 if (sound != null)
                 {
                     Play(new User(), new SoundPlaybackRequest()
@@ -1309,12 +1312,35 @@ namespace Soundbox
                 }
             };
 
-            var options = new SpeechRecognitionOptions()
-            {
-                Languages = new List<string>() { "de", "en" }
-            };
+            var options = SpeechRecognition_GetOptions();
 
+            speechRecognizer = recognizer;
             recognizer.Start(options);
+        }
+
+        /// <summary>
+        /// Returns speech recognition options for the current config and set of sounds (phrases).
+        /// </summary>
+        /// <returns></returns>
+        protected SpeechRecognitionOptions SpeechRecognition_GetOptions()
+        {
+            //TODO speech: config
+            return new SpeechRecognitionOptions()
+            {
+                Languages = new List<string>() { "de", "en" },
+                Phrases = NodesCache.Values.Where(node => node is ISoundboxPlayable).Cast<ISoundboxPlayable>().SelectMany(sound => sound.VoiceActivation == null ? new List<string>() : sound.VoiceActivation.SpeechPhrases).ToList()
+            };
+        }
+
+        private static readonly Regex SpeechRecognition_Normalization = new Regex("[.\\-_?!']|\\s+");
+        /// <summary>
+        /// This is temporary only: normalizes recognized text or the trigger text of a sound to compare them.
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        protected string SpeechRecognition_NormalizeText(string text)
+        {
+            return SpeechRecognition_Normalization.Replace(text, "");
         }
 
         /// <summary>
@@ -1325,7 +1351,17 @@ namespace Soundbox
         /// <param name="soundOld"></param>
         protected void SpeechRecognition_OnSoundChanged(Sound soundNew, Sound soundOld)
         {
+            bool phrasesChanged = false;
 
+            bool newHasPhrases = soundNew.VoiceActivation?.SpeechPhrases.Count > 0;
+            bool oldHasPhrases = soundOld?.VoiceActivation?.SpeechPhrases.Count > 0;
+
+            phrasesChanged = newHasPhrases != oldHasPhrases;
+
+            if (phrasesChanged && speechRecognizer != null)
+            {
+                speechRecognizer.UpdateOptions(SpeechRecognition_GetOptions());
+            }
         }
 
         #endregion

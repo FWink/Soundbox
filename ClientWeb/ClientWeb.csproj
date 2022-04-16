@@ -63,6 +63,7 @@
     <Content Include="src\app\app.component.html" />
     <Content Include="src\favicon.ico" />
     <Content Include="src\index.html" />
+    <None Include="src\pages\SoundboxMainPage.scss" />
     <Content Include="src\pages\SoundboxMainPage.html" />
     <Content Include="tsconfig.json" />
   </ItemGroup>

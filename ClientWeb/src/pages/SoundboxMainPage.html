@@ -1,4 +1,4 @@
-﻿<div>
+﻿<div class="soundbox-sound-list">
     <button type="button" *ngFor="let sound of soundbox.sounds | async" (click)="play(sound)">{{sound.name}}</button>
 </div>
 <div>
@@ -21,10 +21,42 @@
 <div>
     Upload:
     <div>
-        Name: <input type="text" [(ngModel)]="uploadName" />
-        <input type="file" accept="audio/*" (change)="uploadFiles = $event.target.files" />
-        <button type="button" (click)="upload()">Upload</button>
-        <button type="button" (click)="uploadAbort()">Abort</button>
+        <input type="file" accept="audio/*" multiple (change)="onFilesSelected($event.target.files)" />
     </div>
-    Progress: {{ (uploadStatus?.progress | async)?.done }} / {{ (uploadStatus?.progress | async)?.total }}
+    <div *ngIf="uploadStatusCurrent">
+        <div>
+            Current: <progress [value]="(uploadStatusCurrent.progress | async).done" [max]="(uploadStatusCurrent.progress | async).total"></progress>
+        </div>
+        <div>
+            Total: <progress [value]="uploadProgressTotal?.done" [max]="uploadProgressTotal?.total"></progress>
+        </div>
+    </div>
+    <table *ngIf="newSoundsPending.length">
+        <tr>
+            <th>File name</th>
+            <th>Sound name</th>
+            <th>Speech: trigger (separate with ;)</th>
+            <th>Speech: special words (separate with ;)</th>
+            <th>
+                <button type="button" (click)="uploadAll()" [disabled]="uploadsInProgress > 0">Upload All</button>
+            </th>
+        </tr>
+        <tr *ngFor="let sound of newSoundsPending">
+            <td>
+                {{sound.fileName}}
+            </td>
+            <td>
+                <input type="text" [(ngModel)]="sound.name" />
+            </td>
+            <td>
+                <input type="text" [(ngModel)]="sound.speechTriggers" />
+            </td>
+            <td>
+                <input type="text" [(ngModel)]="sound.speechPhrases" />
+            </td>
+            <td>
+                <button type="button" (click)="upload(sound)" [disabled]="uploadsInProgress > 0">Upload</button>
+            </td>
+        </tr>
+    </table>
 </div>
