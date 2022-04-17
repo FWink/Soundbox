@@ -64,7 +64,9 @@
     <Content Include="src\favicon.ico" />
     <Content Include="src\index.html" />
     <None Include="src\pages\SoundboxMainPage.scss" />
+    <Content Include="src\pages\random\SoundboxRandomPage.html" />
     <Content Include="src\pages\SoundboxMainPage.html" />
+    <Content Include="src\pages\stop\SoundboxStopPage.html" />
     <Content Include="tsconfig.json" />
   </ItemGroup>
   <ItemGroup>
@@ -120,7 +122,9 @@
     <TypeScriptCompile Include="src\lib\soundboxjs\Upload.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\UploadStatus.ts" />
     <TypeScriptCompile Include="src\main.ts" />
+    <TypeScriptCompile Include="src\pages\random\SoundboxRandomPage.ts" />
     <TypeScriptCompile Include="src\pages\SoundboxMainPage.ts" />
+    <TypeScriptCompile Include="src\pages\stop\SoundboxStopPage.ts" />
     <TypeScriptCompile Include="src\polyfills.ts" />
     <TypeScriptCompile Include="src\providers\SoundboxProvider.ts" />
     <TypeScriptCompile Include="src\test.ts" />

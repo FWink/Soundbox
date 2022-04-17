@@ -507,9 +507,12 @@ export class Soundbox {
      **/
     protected onSoundListUpdated() {
         //update clients
-        this.soundsSubject.next(
-            this.getSoundsFromDirectoryLocal(this.currentSoundsTree)
-        );
+        let sounds = this.getSoundsFromDirectoryLocal(this.currentSoundsTree);
+        sounds.sort((a, b) => {
+            return a.name.toLocaleLowerCase().localeCompare(b.name.toLocaleLowerCase());
+        });
+
+        this.soundsSubject.next(sounds);
     }
 
     /**

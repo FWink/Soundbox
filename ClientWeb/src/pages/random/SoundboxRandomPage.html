@@ -1,0 +1,36 @@
+﻿<style type="text/css">
+    .random-container {
+        position: absolute;
+        top: 0px;
+        bottom: 0px;
+        left: 0px;
+        right: 0px;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        background-color: black;
+    }
+
+    .random-container > * {
+        flex: 1;
+        font-size: 10vh;
+        border: none;
+    }
+
+    .random-container > *:not(:first-child) {
+        margin-top: 20px;
+    }
+
+    .btn-last {
+        background-color: orange;
+    }
+
+    .btn-random {
+        background-color: forestgreen;
+    }
+
+</style>
+<div class="random-container">
+    <button (click)="playLast()" class="btn-last">Last</button>
+    <button (click)="playRandom()" class="btn-random">Random</button>
+</div>
