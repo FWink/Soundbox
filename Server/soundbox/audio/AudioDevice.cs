@@ -6,45 +6,46 @@ using System.Threading.Tasks;
 namespace Soundbox.Audio
 {
     /// <summary>
-    /// Audio source that contains the name of an audio input device.
-    /// Audio sources of this kind thus do not provide audio themselves, but require other code to access the audio device directly.
+    /// Audio source/sink that contains the name of an audio device.
+    /// Audio sources/sinks of this kind thus do not provide any audio functions themselves, but require other code to access the audio device directly.
+    /// I.e., this is used for configuration only.
     /// </summary>
-    public class DeviceAudioSource : IAudioSource
+    public class AudioDevice : IAudioSource, IAudioSink
     {
         /// <summary>
         /// Name of the audio input device that should be used.
         /// </summary>
-        public string AudioInputDeviceName { get; private set; }
+        public string AudioDeviceName { get; private set; }
 
         /// <summary>
-        /// Alternative to <see cref="AudioInputDeviceName"/>: use the machine's default audio input device.
+        /// Alternative to <see cref="AudioDeviceName"/>: use the machine's default audio input device.
         /// </summary>
-        public bool UseDefaultAudioInputDevice { get; private set; }
+        public bool UseDefaultAudioDevice { get; private set; }
 
         #region "Static Getters"
 
         /// <summary>
-        /// Returns a <see cref="DeviceAudioSource"/> for the audio device with the given name.
+        /// Returns a <see cref="AudioDevice"/> for the audio device with the given name.
         /// </summary>
         /// <param name="name"></param>
         /// <returns></returns>
-        public static DeviceAudioSource FromAudioDevice(string name)
+        public static AudioDevice FromAudioDevice(string name)
         {
-            return new DeviceAudioSource()
+            return new AudioDevice()
             {
-                AudioInputDeviceName = name
+                AudioDeviceName = name
             };
         }
 
         /// <summary>
-        /// Returns a <see cref="DeviceAudioSource"/> for the machine's default audio input device.
+        /// Returns a <see cref="AudioDevice"/> for the machine's default audio input device.
         /// </summary>
         /// <returns></returns>
-        public static DeviceAudioSource FromDefaultAudioDevice()
+        public static AudioDevice FromDefaultAudioDevice()
         {
-            return new DeviceAudioSource()
+            return new AudioDevice()
             {
-                UseDefaultAudioInputDevice = true
+                UseDefaultAudioDevice = true
             };
         }
 
@@ -54,22 +55,22 @@ namespace Soundbox.Audio
 
         public override bool Equals(object obj)
         {
-            return obj is DeviceAudioSource source &&
-                   AudioInputDeviceName == source.AudioInputDeviceName &&
-                   UseDefaultAudioInputDevice == source.UseDefaultAudioInputDevice;
+            return obj is AudioDevice source &&
+                   AudioDeviceName == source.AudioDeviceName &&
+                   UseDefaultAudioDevice == source.UseDefaultAudioDevice;
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(AudioInputDeviceName, UseDefaultAudioInputDevice);
+            return HashCode.Combine(AudioDeviceName, UseDefaultAudioDevice);
         }
 
-        public static bool operator ==(DeviceAudioSource left, DeviceAudioSource right)
+        public static bool operator ==(AudioDevice left, AudioDevice right)
         {
-            return EqualityComparer<DeviceAudioSource>.Default.Equals(left, right);
+            return EqualityComparer<AudioDevice>.Default.Equals(left, right);
         }
 
-        public static bool operator !=(DeviceAudioSource left, DeviceAudioSource right)
+        public static bool operator !=(AudioDevice left, AudioDevice right)
         {
             return !(left == right);
         }

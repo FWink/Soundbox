@@ -8,7 +8,7 @@ namespace Soundbox.Speech.Recognition
     /// <summary>
     /// Factory that provides instances of <see cref="ISpeechRecognitionService"/> for given <see cref="SpeechRecognitionConfig"/>s.
     /// This service provider makes sure that only speech recognizers are returned that match the given config
-    /// (for example, if <see cref="SpeechRecognitionConfig.AudioSource"/> is a <see cref="Audio.DeviceAudioSource"/> but only <see cref="Audio.IStreamAudioSource"/> is supported,
+    /// (for example, if <see cref="SpeechRecognitionConfig.AudioSource"/> is a <see cref="Audio.AudioDevice"/> but only <see cref="Audio.IStreamAudioSource"/> is supported,
     /// then the service provider would return null).
     /// </summary>
     public interface ISpeechRecognitionServiceProvider

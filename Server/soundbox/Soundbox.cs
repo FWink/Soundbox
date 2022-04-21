@@ -1289,7 +1289,7 @@ namespace Soundbox
             //TODO stt: config
             var config = new SpeechRecognitionConfig()
             {
-                AudioSource = Audio.DeviceAudioSource.FromDefaultAudioDevice()
+                AudioSource = Audio.AudioDevice.FromDefaultAudioDevice()
             };
 
             var recognizer = provider.GetSpeechRecognizer(config);

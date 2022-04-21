@@ -78,12 +78,12 @@ namespace Soundbox.Speech.Recognition.Azure
                     return lang;
                 }).ToArray());
 
-                if (Config.AudioSource is DeviceAudioSource deviceAudioSource)
+                if (Config.AudioSource is AudioDevice deviceAudioSource)
                 {
-                    if (deviceAudioSource.UseDefaultAudioInputDevice)
+                    if (deviceAudioSource.UseDefaultAudioDevice)
                         audioConfig = AudioConfig.FromDefaultMicrophoneInput();
                     else
-                        audioConfig = AudioConfig.FromMicrophoneInput(deviceAudioSource.AudioInputDeviceName);
+                        audioConfig = AudioConfig.FromMicrophoneInput(deviceAudioSource.AudioDeviceName);
                 }
                 else
                 {
