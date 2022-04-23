@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace Soundbox.Audio.NAudio
 {
     /// <summary>
-    /// Uses the NAudio+WASAPI library to read from audio devices.
+    /// Uses the NAudio+WASAPI library to read from audio devices on Windows.
     /// </summary>
     public class NAudioWasapiStreamAudioSource : IStreamAudioSource
     {

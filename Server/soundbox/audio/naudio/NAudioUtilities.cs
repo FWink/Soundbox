@@ -32,6 +32,27 @@ namespace Soundbox.Audio.NAudio
             }
         }
 
+        /// <summary>
+        /// Translates the given <see cref="WaveStreamAudioFormat"/> into one of NAudio's <see cref="WaveFormat"/>.
+        /// </summary>
+        /// <param name="format"></param>
+        /// <returns></returns>
+        public static WaveFormat ToNAudioWaveFormat(WaveStreamAudioFormat format)
+        {
+            if (format.IntEncoded)
+            {
+                return new WaveFormat(format.SampleRate, format.BitsPerSample, format.ChannelCount);
+            }
+            else if (format.FloatEncoded)
+            {
+                return WaveFormat.CreateIeeeFloatWaveFormat(format.SampleRate, format.ChannelCount);
+            }
+            else
+            {
+                throw new ArgumentException($"Unknown WaveStreamAudioFormat encoding: neither IntEncoded nor FloatEncoded");
+            }
+        }
+
         #endregion
 
         #region "Devices"
