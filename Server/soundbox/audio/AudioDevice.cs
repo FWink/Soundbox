@@ -13,14 +13,21 @@ namespace Soundbox.Audio
     public class AudioDevice : IAudioSource, IAudioSink
     {
         /// <summary>
-        /// Name of the audio input device that should be used.
+        /// Name of the audio device that should be used.
         /// </summary>
-        public string AudioDeviceName { get; private set; }
+        public virtual string AudioDeviceName { get; private set; }
 
         /// <summary>
         /// Alternative to <see cref="AudioDeviceName"/>: use the machine's default audio input device.
         /// </summary>
-        public bool UseDefaultAudioDevice { get; private set; }
+        public virtual bool UseDefaultAudioInputDevice { get; private set; }
+
+        /// <summary>
+        /// Alternative to <see cref="AudioDeviceName"/>: use the machine's default audio output device.
+        /// Note that it may be possible to use an output device as a loopback input device,
+        /// thus returning audio that is rendered by the output device.
+        /// </summary>
+        public virtual bool UseDefaultAudioOutputDevice { get; private set; }
 
         #region "Static Getters"
 
@@ -38,14 +45,23 @@ namespace Soundbox.Audio
         }
 
         /// <summary>
-        /// Returns a <see cref="AudioDevice"/> for the machine's default audio input device.
+        /// Returns a <see cref="AudioDevice"/> for the machine's default audio input or output device.
+        /// If both <paramref name="defaultInputDevice"/> and <paramref name="defaultOutputDevice"/> are false (default values),
+        /// then they are both treated as true, thus returning a possibly valid AudioDevice when not passing any parameters.
         /// </summary>
         /// <returns></returns>
-        public static AudioDevice FromDefaultAudioDevice()
+        public static AudioDevice FromDefaultAudioDevice(bool defaultInputDevice = false, bool defaultOutputDevice = false)
         {
+            if (!defaultInputDevice && !defaultOutputDevice)
+            {
+                defaultInputDevice = true;
+                defaultOutputDevice = true;
+            }
+
             return new AudioDevice()
             {
-                UseDefaultAudioDevice = true
+                UseDefaultAudioInputDevice = defaultInputDevice,
+                UseDefaultAudioOutputDevice = defaultOutputDevice
             };
         }
 
@@ -55,14 +71,15 @@ namespace Soundbox.Audio
 
         public override bool Equals(object obj)
         {
-            return obj is AudioDevice source &&
-                   AudioDeviceName == source.AudioDeviceName &&
-                   UseDefaultAudioDevice == source.UseDefaultAudioDevice;
+            return obj is AudioDevice device &&
+                   AudioDeviceName == device.AudioDeviceName &&
+                   UseDefaultAudioInputDevice == device.UseDefaultAudioInputDevice &&
+                   UseDefaultAudioOutputDevice == device.UseDefaultAudioOutputDevice;
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(AudioDeviceName, UseDefaultAudioDevice);
+            return HashCode.Combine(AudioDeviceName, UseDefaultAudioInputDevice, UseDefaultAudioOutputDevice);
         }
 
         public static bool operator ==(AudioDevice left, AudioDevice right)

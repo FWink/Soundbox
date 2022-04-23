@@ -19,7 +19,7 @@ namespace Soundbox.Speech.Recognition.Azure
 
         public ISpeechRecognitionService GetSpeechRecognizer(SpeechRecognitionConfig config)
         {
-            if (!(config.AudioSource is Audio.AudioDevice))
+            if (!(config.AudioSource is Audio.AudioDevice audioDevice) || (!audioDevice.UseDefaultAudioInputDevice && audioDevice.UseDefaultAudioOutputDevice))
                 //not supported right now
                 return null;
 

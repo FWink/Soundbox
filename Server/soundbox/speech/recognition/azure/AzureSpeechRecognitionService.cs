@@ -80,8 +80,10 @@ namespace Soundbox.Speech.Recognition.Azure
 
                 if (Config.AudioSource is AudioDevice deviceAudioSource)
                 {
-                    if (deviceAudioSource.UseDefaultAudioDevice)
+                    if (deviceAudioSource.UseDefaultAudioInputDevice)
                         audioConfig = AudioConfig.FromDefaultMicrophoneInput();
+                    else if (deviceAudioSource.UseDefaultAudioOutputDevice)
+                        throw new ArgumentException("AzureSpeechRecognitionService currently does not support loopback audio sources (UseDefaultAudioOutputDevice)");
                     else
                         audioConfig = AudioConfig.FromMicrophoneInput(deviceAudioSource.AudioDeviceName);
                 }
