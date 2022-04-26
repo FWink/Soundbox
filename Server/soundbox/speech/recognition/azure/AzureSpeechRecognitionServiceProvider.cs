@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,10 +12,12 @@ namespace Soundbox.Speech.Recognition.Azure
     public class AzureSpeechRecognitionServiceProvider : ISpeechRecognitionServiceProvider
     {
         protected IServiceProvider ServiceProvider;
+        protected ILogger Logger;
 
-        public AzureSpeechRecognitionServiceProvider(IServiceProvider serviceProvider)
+        public AzureSpeechRecognitionServiceProvider(IServiceProvider serviceProvider, ILogger<AzureSpeechRecognitionServiceProvider> logger)
         {
             this.ServiceProvider = serviceProvider;
+            this.Logger = logger;
         }
 
         public ISpeechRecognitionService GetSpeechRecognizer(SpeechRecognitionConfig config)
@@ -27,8 +30,18 @@ namespace Soundbox.Speech.Recognition.Azure
             if (service == null)
                 return null;
 
-            service.SetConfig(config);
-            return service;
+            try
+            {
+                if (service.SetConfig(config))
+                    return service;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Could not initialize AzureSpeechRecognitionService");
+                service.Dispose();
+            }
+
+            return null;
         }
     }
 }

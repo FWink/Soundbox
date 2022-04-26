@@ -10,6 +10,8 @@ namespace Soundbox.Audio
     {
         IStreamAudioSource WrappedAudioSource { get; }
 
+        WaveStreamAudioFormat IStreamAudioSource.Format => WrappedAudioSource.Format;
+
         Task IStreamAudioSource.Start()
         {
             return WrappedAudioSource.Start();

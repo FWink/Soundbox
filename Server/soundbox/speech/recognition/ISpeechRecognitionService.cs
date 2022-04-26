@@ -21,7 +21,7 @@ namespace Soundbox.Speech.Recognition
         Task Start(SpeechRecognitionOptions options);
 
         /// <summary>
-        /// Immediately stops the recognition started via <see cref="Start(SpeechRecognitionOptions)"/>.
+        /// Stops the recognition started via <see cref="Start(SpeechRecognitionOptions)"/>. May produce a final <see cref="Recognized"/> event.
         /// </summary>
         /// <returns></returns>
         Task Stop();

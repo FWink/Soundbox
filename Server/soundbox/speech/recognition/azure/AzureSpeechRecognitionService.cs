@@ -28,6 +28,18 @@ namespace Soundbox.Speech.Recognition.Azure
         protected bool IsRunning;
         protected SpeechRecognizer SpeechRecognizer;
 
+        /// <summary>
+        /// Audio config created in <see cref="SetConfig(SpeechRecognitionConfig)"/>
+        /// </summary>
+        protected AudioConfig AudioConfig;
+        /// <summary>
+        /// Optional: if <see cref="SpeechRecognizer"/> is fed from this, then we need to <see cref="IStreamAudioSource.Start"/> and <see cref="IStreamAudioSource.Stop"/> this as required.
+        /// </summary>
+        protected IStreamAudioSource StreamAudioSource;
+
+        /// <summary>
+        /// Disposed both in <see cref="Dispose"/> but also in <see cref="Stop"/>: disposables for each run.
+        /// </summary>
         protected ICollection<IDisposable> Disposables = new List<IDisposable>();
 
         public AzureSpeechRecognitionService(ILogger<AzureSpeechRecognitionService> logger, IServiceProvider serviceProvider)
@@ -40,14 +52,19 @@ namespace Soundbox.Speech.Recognition.Azure
         /// Sets the recognizer's config. For internal usage only.
         /// </summary>
         /// <param name="config"></param>
-        internal void SetConfig(SpeechRecognitionConfig config)
+        /// <returns>
+        /// False: the given config is not compatible.
+        /// </returns>
+        internal bool SetConfig(SpeechRecognitionConfig config)
         {
             this.Config = config;
+            this.AudioConfig = GetAudioConfig();
+
+            return this.AudioConfig != null;
         }
 
         public async Task Start(SpeechRecognitionOptions options)
         {
-            AudioConfig audioConfig = null;
             SpeechRecognizer recognizer = null;
 
             try
@@ -78,21 +95,7 @@ namespace Soundbox.Speech.Recognition.Azure
                     return lang;
                 }).ToArray());
 
-                if (Config.AudioSource is AudioDevice deviceAudioSource)
-                {
-                    if (deviceAudioSource.UseDefaultAudioInputDevice)
-                        audioConfig = AudioConfig.FromDefaultMicrophoneInput();
-                    else if (deviceAudioSource.UseDefaultAudioOutputDevice)
-                        throw new ArgumentException("AzureSpeechRecognitionService currently does not support loopback audio sources (UseDefaultAudioOutputDevice)");
-                    else
-                        audioConfig = AudioConfig.FromMicrophoneInput(deviceAudioSource.AudioDeviceName);
-                }
-                else
-                {
-                    throw new ArgumentException("AzureSpeechRecognitionService currently supports DeviceAudioSource only but was given: " + Config.AudioSource?.GetType().FullName);
-                }
-
-                recognizer = new SpeechRecognizer(speechConfig, languageConfig, audioConfig);
+                recognizer = new SpeechRecognizer(speechConfig, languageConfig, AudioConfig);
 
                 //set up the special phrases if any
                 if (options.Phrases?.Count > 0)
@@ -111,7 +114,6 @@ namespace Soundbox.Speech.Recognition.Azure
 
                     Stopped?.Invoke(this, new SpeechRecognitionStoppedEvent()
                     {
-                        SpeechRecognizer = this,
                         Message = $"{e.ErrorCode}: {e.ErrorDetails}"
                     });
                 };
@@ -126,13 +128,16 @@ namespace Soundbox.Speech.Recognition.Azure
 
                 //start recognizing
                 await recognizer.StartContinuousRecognitionAsync();
+
+                //start our audio source
+                if (StreamAudioSource != null)
+                    await StreamAudioSource.Start();
             }
             catch (Exception e)
             {
                 Logger.LogError(e, "Could not start continuous recognition");
 
                 recognizer?.Dispose();
-                audioConfig?.Dispose();
                 throw;
             }
 
@@ -140,7 +145,6 @@ namespace Soundbox.Speech.Recognition.Azure
             IsRunning = true;
 
             Disposables.Add(recognizer);
-            Disposables.Add(audioConfig);
         }
 
         public Task Stop()
@@ -155,12 +159,18 @@ namespace Soundbox.Speech.Recognition.Azure
         /// False: <see cref="Stopped"/> is not triggered.
         /// </param>
         /// <returns></returns>
-        protected Task StopInt(bool withEvent)
+        protected async Task StopInt(bool withEvent)
         {
+            if (IsRunning && StreamAudioSource != null)
+                await StreamAudioSource.Stop();
+
             var recognizer = SpeechRecognizer;
             if (recognizer != null)
             {
                 Logger.LogInformation("Stopping speech recognition");
+
+                //simply disposing the speechRecognizer takes 10s
+                await recognizer.StopContinuousRecognitionAsync();
 
                 Dispose(Disposables);
                 IsRunning = false;
@@ -168,14 +178,9 @@ namespace Soundbox.Speech.Recognition.Azure
 
                 if (withEvent)
                 {
-                    Stopped?.Invoke(this, new SpeechRecognitionStoppedEvent()
-                    {
-                        SpeechRecognizer = this
-                    });
+                    Stopped?.Invoke(this, new SpeechRecognitionStoppedEvent());
                 }
             }
-
-            return Task.CompletedTask;
         }
 
         public async Task UpdateOptions(SpeechRecognitionOptions options)
@@ -200,7 +205,6 @@ namespace Soundbox.Speech.Recognition.Azure
 
                 Stopped?.Invoke(this, new SpeechRecognitionStoppedEvent()
                 {
-                    SpeechRecognizer = this,
                     Exception = e
                 });
                 return;
@@ -225,14 +229,160 @@ namespace Soundbox.Speech.Recognition.Azure
             string strEvent = final ? "Recognized" : "Recognizing";
             Logger.LogTrace($"{strEvent} ({language.Language}): {e.Result.Text}");
 
+            if (string.IsNullOrWhiteSpace(e.Result.Text))
+                //this happens occasionally
+                return;
+
             var recognizedEvent = ServiceProvider.GetService(typeof(SpeechRecognizedEvent)) as SpeechRecognizedEvent;
-            recognizedEvent.SpeechRecognizer = this;
             recognizedEvent.Preliminary = !final;
             recognizedEvent.ResultID = e.Result.OffsetInTicks.ToString();
             recognizedEvent.Text = e.Result.Text;
             recognizedEvent.Language = language.Language;
 
             Recognized?.Invoke(this, recognizedEvent);
+        }
+
+        #endregion
+
+        #region "Audio"
+
+        /// <summary>
+        /// Constructs an <see cref="AudioConfig"/> from <see cref="Config"/>.
+        /// Depending on the available services, this may either use the audio features built into the Speech SDK (such as <see cref="AudioConfig.FromDefaultMicrophoneInput"/>),
+        /// or it may construct a <see cref="IStreamAudioSource"/> that accesses the requested <see cref="AudioDevice"/> with resampling and noise gates as required.
+        /// </summary>
+        /// <returns></returns>
+        protected AudioConfig GetAudioConfig()
+        {
+            var streamSource = GetStreamAudioSource(Config.AudioSource);
+            if (streamSource != null)
+            {
+                //use this stream source and convert to an Azure audio stream
+                try
+                {
+                    var azureInput = AudioInputStream.CreatePushStream(AudioStreamFormat.GetWaveFormatPCM(
+                        (uint)streamSource.Format.SampleRate,
+                        (byte)streamSource.Format.BitsPerSample,
+                        (byte)streamSource.Format.ChannelCount));
+
+                    streamSource.DataAvailable += (s, e) =>
+                    {
+                        azureInput.Write(e.Buffer, e.BytesAvailable);
+                    };
+
+                    this.StreamAudioSource = streamSource;
+                    return AudioConfig.FromStreamInput(azureInput);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, $"Error while creating an Azure AudioConfig from an IStreamAudioSource. Format: SampleRate={streamSource.Format.SampleRate}, BitsPerSample={streamSource.Format.BitsPerSample}, Channels={streamSource.Format.ChannelCount}");
+                    streamSource.Dispose();
+                    this.StreamAudioSource = null;
+                }
+            }
+
+            //try and use the built-in audio engine
+            if (Config.AudioSource is AudioDevice audioDevice)
+            {
+                if (audioDevice.UseDefaultAudioInputDevice)
+                    return AudioConfig.FromDefaultMicrophoneInput();
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// See <see cref="GetAudioConfig"/>: constructs a <see cref="IStreamAudioSource"/> for the given audio source (usually an <see cref="AudioDevice"/>).
+        /// Returns null if no <see cref="IStreamAudioSource"/> can be constructed from this source.
+        /// </summary>
+        /// <param name="configSource"></param>
+        /// <returns></returns>
+        protected IStreamAudioSource GetStreamAudioSource(IAudioSource configSource)
+        {
+            IStreamAudioSource streamSource = configSource as IStreamAudioSource;
+
+            if (streamSource != null)
+            {
+                streamSource = new NonDisposingStreamAudioSource(streamSource);
+            }
+            if (streamSource == null && configSource is AudioDevice audioDevice)
+            {
+                //read from device
+                var provider = ServiceProvider.GetService(typeof(IStreamAudioSourceProvider)) as IStreamAudioSourceProvider;
+                if (provider != null)
+                {
+                    streamSource = provider.GetStreamAudioSource(audioDevice);
+                }
+            }
+            if (streamSource == null)
+            {
+                return null;
+            }
+
+            //check on the wave format
+            //according to https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/audio-processing-overview#minimum-requirements-to-use-microsoft-audio-stack
+            //-we need multiples of 16kHz
+            //-"32-bit IEEE little endian float, 32-bit little endian signed int, 24-bit little endian signed int, 16-bit little endian signed int, or 8-bit signed int"
+            //--(though the API doesn't seem to allow float formats)
+            //additionally: more than one channel increases the API cost
+            var sourceFormat = streamSource.Format;
+            bool resampleRequired = sourceFormat.SampleRate % 16000 != 0 ||
+                sourceFormat.FloatEncoded ||
+                !sourceFormat.IntEncodingSigned ||
+                !sourceFormat.ByteOrderLittleEndian ||
+                sourceFormat.ChannelCount > 1;
+            if (resampleRequired)
+            {
+                //get a resampler
+                WaveStreamAudioFormat targetFormat = WaveStreamAudioFormat.GetIntFormat(
+                    sampleRate: sourceFormat.SampleRate / 16000 * 16000,
+                    bitsPerSample: Math.Min(sourceFormat.BitsPerSample / 8 * 8, 32),
+                    channelCount: 1,
+                    signed: true,
+                    littleEndian: true
+                );
+                var provider = ServiceProvider.GetService(typeof(IStreamAudioResamplerProvider)) as IStreamAudioResamplerProvider;
+
+                var resampler = provider?.GetResampler(streamSource, targetFormat);
+                if (resampler != null)
+                {
+                    streamSource = resampler;
+                }
+                else
+                {
+                    //can't resample
+                    streamSource.Dispose();
+                    return null;
+                }
+            }
+
+            //TODO noisegate
+            return streamSource;
+        }
+
+        /// <summary>
+        /// Helper class for <see cref="GetStreamAudioSource(IAudioSource)"/>:
+        /// wraps the <see cref="IStreamAudioSource"/> received via <see cref="SpeechRecognitionConfig"/>
+        /// and does not dispose it when this object is disposed, thus keeping external audio sources intact.
+        /// </summary>
+        private class NonDisposingStreamAudioSource : IWrappedStreamAudioSource
+        {
+            public IStreamAudioSource WrappedAudioSource { get; private set; }
+
+            public NonDisposingStreamAudioSource(IStreamAudioSource audioSource)
+            {
+                this.WrappedAudioSource = audioSource;
+                audioSource.DataAvailable += (s, e) => DataAvailable?.Invoke(this, e);
+                audioSource.Stopped += (s, e) => Stopped?.Invoke(this, e);
+            }
+
+            public event EventHandler<StreamAudioSourceDataEvent> DataAvailable;
+            public event EventHandler<StreamAudioSourceStoppedEvent> Stopped;
+
+            public void Dispose()
+            {
+                //do nothing
+            }
         }
 
         #endregion
@@ -255,7 +405,8 @@ namespace Soundbox.Speech.Recognition.Azure
         public void Dispose()
         {
             Dispose(Disposables);
-            Config.AudioSource.Dispose();
+            AudioConfig?.Dispose();
+            StreamAudioSource?.Dispose();
         }
 
         #endregion

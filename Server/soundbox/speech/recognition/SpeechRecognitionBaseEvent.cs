@@ -10,7 +10,6 @@ namespace Soundbox.Speech.Recognition
     /// </summary>
     public class SpeechRecognitionBaseEvent : EventArgs
     {
-        public ISpeechRecognitionService SpeechRecognizer { get; set; }
         /// <summary>
         /// Timestamp at which the event had been generated.
         /// </summary>
