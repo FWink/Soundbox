@@ -2,6 +2,8 @@
 using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.Extensions.Logging;
 using Soundbox.Audio;
+using Soundbox.Audio.Processing;
+using Soundbox.Audio.Processing.Noisegate;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -303,6 +305,7 @@ namespace Soundbox.Speech.Recognition.Azure
 
             if (streamSource != null)
             {
+                //take care to keep the original stream intact
                 streamSource = new NonDisposingStreamAudioSource(streamSource);
             }
             if (streamSource == null && configSource is AudioDevice audioDevice)
@@ -316,7 +319,24 @@ namespace Soundbox.Speech.Recognition.Azure
             }
             if (streamSource == null)
             {
+                Logger.LogError($"Cannot read from AudioDevice: could not construct an IStreamAudioSource");
                 return null;
+            }
+
+            //add a noisegate to avoid unnecessary costs when there's no actual sound. probably best to do that before resampling => saves some processing power
+            var noiseGateProvider = ServiceProvider.GetService(typeof(INoiseGateStreamAudioProcessProvider)) as INoiseGateStreamAudioProcessProvider;
+            var noiseGate = noiseGateProvider?.GetNoiseGate(streamSource);
+            if (noiseGate != null)
+            {
+                noiseGate.SetOptions(new NoiseGateStreamAudioProcessorOptions()
+                {
+                    VolumeThreshold = 0
+                });
+                streamSource = noiseGate;
+            }
+            else
+            {
+                Logger.LogWarning($"No noisegate available. Input format: {streamSource.Format}");
             }
 
             //check on the wave format
@@ -327,7 +347,7 @@ namespace Soundbox.Speech.Recognition.Azure
             //additionally: more than one channel increases the API cost
             var sourceFormat = streamSource.Format;
             bool resampleRequired = sourceFormat.SampleRate % 16000 != 0 ||
-                sourceFormat.FloatEncoded ||
+                !sourceFormat.IntEncoded ||
                 !sourceFormat.IntEncodingSigned ||
                 !sourceFormat.ByteOrderLittleEndian ||
                 sourceFormat.ChannelCount > 1;
@@ -351,12 +371,12 @@ namespace Soundbox.Speech.Recognition.Azure
                 else
                 {
                     //can't resample
+                    Logger.LogError($"No resampler available. Input format: {sourceFormat}");
                     streamSource.Dispose();
                     return null;
                 }
             }
 
-            //TODO noisegate
             return streamSource;
         }
 
@@ -372,12 +392,7 @@ namespace Soundbox.Speech.Recognition.Azure
             public NonDisposingStreamAudioSource(IStreamAudioSource audioSource)
             {
                 this.WrappedAudioSource = audioSource;
-                audioSource.DataAvailable += (s, e) => DataAvailable?.Invoke(this, e);
-                audioSource.Stopped += (s, e) => Stopped?.Invoke(this, e);
             }
-
-            public event EventHandler<StreamAudioSourceDataEvent> DataAvailable;
-            public event EventHandler<StreamAudioSourceStoppedEvent> Stopped;
 
             public void Dispose()
             {

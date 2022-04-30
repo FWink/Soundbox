@@ -1,4 +1,5 @@
 ﻿using NAudio.Wave;
+using Soundbox.Audio.Processing;
 using System;
 using System.Threading.Tasks;
 
@@ -55,10 +56,6 @@ namespace Soundbox.Audio.NAudio
                     });
                 }
             };
-            audioSource.Stopped += (s, e) =>
-            {
-                Stopped?.Invoke(this, e);
-            };
         }
 
         public void Dispose()
@@ -68,6 +65,5 @@ namespace Soundbox.Audio.NAudio
         }
 
         public event EventHandler<StreamAudioSourceDataEvent> DataAvailable;
-        public event EventHandler<StreamAudioSourceStoppedEvent> Stopped;
     }
 }

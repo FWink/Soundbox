@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace Soundbox.Audio
+namespace Soundbox.Audio.Processing
 {
     /// <summary>
     /// For <see cref="IStreamAudioSource"/>s that wrap an audio stream and modify its output.
@@ -25,6 +25,18 @@ namespace Soundbox.Audio
         void System.IDisposable.Dispose()
         {
             WrappedAudioSource?.Dispose();
+        }
+
+        event System.EventHandler<StreamAudioSourceDataEvent> IStreamAudioSource.DataAvailable
+        {
+            add { WrappedAudioSource.DataAvailable += value; }
+            remove { WrappedAudioSource.DataAvailable -= value; }
+        }
+
+        event System.EventHandler<StreamAudioSourceStoppedEvent> IStreamAudioSource.Stopped
+        {
+            add { WrappedAudioSource.Stopped += value; }
+            remove { WrappedAudioSource.Stopped -= value; }
         }
     }
 }

@@ -30,6 +30,9 @@ namespace Soundbox
             services.AddCors(); 
             services.AddSignalR().AddNewtonsoftJsonProtocol();
 
+
+            bool isWindows = System.Environment.OSVersion.Platform == PlatformID.Win32NT;
+
             services.AddSingleton<Soundbox>();
             services.AddTransient<ISoundChainPlaybackService,DefaultSoundChainPlaybackService>();
 
@@ -38,7 +41,7 @@ namespace Soundbox
             Type volumeType = null;
             Type metaDataType = null;
             
-            if(System.Environment.OSVersion.Platform == PlatformID.Win32NT)
+            if(isWindows)
             {
                 playBackType = typeof(Playback.IrrKlang.IrrKlangSoundPlaybackService);
             }
@@ -83,6 +86,20 @@ namespace Soundbox
             services.AddSingleton<LiteDbPreferencesDatabaseProvider>();
             services.AddTransient<IPreferencesProvider<int>, LiteDbPreferencesProvider<int>>();
             services.AddTransient<IPreferencesProvider<double>, LiteDbPreferencesProvider<double>>();
+
+            //audio processing
+            //NAudio
+            services.AddTransient<Audio.IStreamAudioSourceProvider, Audio.NAudio.NAudioStreamAudioSourceProvider>();
+            services.AddTransient<Audio.Processing.IStreamAudioResamplerProvider, Audio.NAudio.NAudioStreamAudioResamplerProvider>();
+            if (isWindows)
+            {
+                services.AddTransient<Audio.NAudio.NAudioWasapiStreamAudioSource>();
+                services.AddTransient<Audio.NAudio.NAudioMediaFoundationStreamAudioResampler>();
+            }
+
+            //effects
+            services.AddTransient<Audio.Processing.Noisegate.INoiseGateStreamAudioProcessProvider, Audio.Processing.Noisegate.Implementation.DefaultNoiseGateStreamAudioProcessProvider>();
+            services.AddTransient<Audio.Processing.Noisegate.INoiseGateStreamAudioProcessor, Audio.Processing.Noisegate.Implementation.DefaultNoiseGateStreamAudioProcessor>();
 
             //TODO azure: check on azure config, then set up speech to text (or don't)
             services.AddTransient<Speech.Recognition.ISpeechRecognitionServiceProvider, Speech.Recognition.Azure.AzureSpeechRecognitionServiceProvider>();

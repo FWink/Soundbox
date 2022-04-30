@@ -79,5 +79,26 @@
         }
 
         #endregion
+
+        #region "ToString"
+
+        public override string ToString()
+        {
+            string str = "Wave{";
+            if (FloatEncoded)
+            {
+                str += "Float," + BitsPerSample;
+            }
+            else if (IntEncoded)
+            {
+                str += "Int," + BitsPerSample + "," + (IntEncodingSigned ? "Signed" : "Unsigned");
+            }
+
+            str += "," + (ByteOrderLittleEndian ? "LittleEndian" : "BigEndian") + "}";
+
+            return str;
+        }
+
+        #endregion
     }
 }

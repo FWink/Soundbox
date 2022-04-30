@@ -1,4 +1,4 @@
-﻿namespace Soundbox.Audio
+﻿namespace Soundbox.Audio.Processing
 {
     /// <summary>
     /// Factory for <see cref="IStreamAudioResampler"/>s.

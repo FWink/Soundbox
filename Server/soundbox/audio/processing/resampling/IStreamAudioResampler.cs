@@ -1,4 +1,4 @@
-﻿namespace Soundbox.Audio
+﻿namespace Soundbox.Audio.Processing
 {
     /// <summary>
     /// Resampler for uncompressed audio streams: takes samples from an <see cref="IStreamAudioSource"/> and transforms them

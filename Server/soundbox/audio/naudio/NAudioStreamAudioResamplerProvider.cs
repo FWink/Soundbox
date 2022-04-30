@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Soundbox.Audio.Processing;
 using System;
 
 namespace Soundbox.Audio.NAudio
