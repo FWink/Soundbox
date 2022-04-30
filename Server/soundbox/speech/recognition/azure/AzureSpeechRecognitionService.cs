@@ -330,7 +330,7 @@ namespace Soundbox.Speech.Recognition.Azure
             {
                 noiseGate.SetOptions(new NoiseGateStreamAudioProcessorOptions()
                 {
-                    VolumeThreshold = 0
+                    VolumeThreshold = 0.01f
                 });
                 streamSource = noiseGate;
             }

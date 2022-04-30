@@ -99,7 +99,7 @@ namespace Soundbox
 
             //effects
             services.AddTransient<Audio.Processing.Noisegate.INoiseGateStreamAudioProcessProvider, Audio.Processing.Noisegate.Implementation.DefaultNoiseGateStreamAudioProcessProvider>();
-            services.AddTransient<Audio.Processing.Noisegate.INoiseGateStreamAudioProcessor, Audio.Processing.Noisegate.Implementation.DefaultNoiseGateStreamAudioProcessor>();
+            services.AddTransient<Audio.Processing.Noisegate.Implementation.DefaultNoiseGateStreamAudioProcessor>();
 
             //TODO azure: check on azure config, then set up speech to text (or don't)
             services.AddTransient<Speech.Recognition.ISpeechRecognitionServiceProvider, Speech.Recognition.Azure.AzureSpeechRecognitionServiceProvider>();

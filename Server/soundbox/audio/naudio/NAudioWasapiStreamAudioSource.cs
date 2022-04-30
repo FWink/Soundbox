@@ -1,4 +1,5 @@
 ﻿using NAudio.CoreAudioApi;
+using NAudio.Wave;
 using Soundbox.Threading;
 using System;
 using System.Threading.Tasks;
@@ -25,12 +26,18 @@ namespace Soundbox.Audio.NAudio
             this.Device = device;
 
             var naudioDevice = NAudioUtilities.GetDevice(device);
-            this.Capture = new WasapiCapture(naudioDevice);
+            if (naudioDevice.DataFlow == DataFlow.Capture)
+                this.Capture = new WasapiCapture(naudioDevice);
+            else
+                this.Capture = new WasapiLoopbackCapture(naudioDevice);
             this.Format = NAudioUtilities.FromNAudioWaveFormat(this.Capture.WaveFormat);
 
             //set up event listeners
             this.Capture.DataAvailable += (s, e) =>
             {
+                if (e.BytesRecorded == 0)
+                    return;
+
                 this.DataAvailable?.Invoke(this, new StreamAudioSourceDataEvent()
                 {
                     Buffer = e.Buffer,

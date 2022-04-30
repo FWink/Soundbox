@@ -84,17 +84,17 @@
 
         public override string ToString()
         {
-            string str = "Wave{";
+            string str = "Wave (";
             if (FloatEncoded)
             {
-                str += "Float," + BitsPerSample;
+                str += "Float";
             }
             else if (IntEncoded)
             {
-                str += "Int," + BitsPerSample + "," + (IntEncodingSigned ? "Signed" : "Unsigned");
+                str += "Int," + (IntEncodingSigned ? "Signed" : "Unsigned");
             }
 
-            str += "," + (ByteOrderLittleEndian ? "LittleEndian" : "BigEndian") + "}";
+            str += "," + BitsPerSample + "x" + SampleRate + "," + (ByteOrderLittleEndian ? "LittleEndian" : "BigEndian") + (ChannelCount > 1 ? ("," + ChannelCount + " Channels") : "") + ")";
 
             return str;
         }
