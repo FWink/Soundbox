@@ -35,12 +35,12 @@ namespace Soundbox.Audio.NAudio
 
         public int Read(byte[] buffer, int offset, int count)
         {
-            count = Math.Min(count, Data.BytesAvailable - DataOffset);
+            count = Math.Min(count, Data.Buffer.Count - DataOffset);
             if (count <= 0)
                 return 0;
 
             //copy into target buffer
-            Array.Copy(Data.Buffer, DataOffset, buffer, offset, count);
+            Array.Copy(Data.Buffer.Array, Data.Buffer.Offset + DataOffset, buffer, offset, count);
             DataOffset += count;
 
             return count;

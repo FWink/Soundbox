@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Soundbox.Audio;
 using Soundbox.Audio.Processing;
 using Soundbox.Audio.Processing.Noisegate;
+using Soundbox.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,6 +39,11 @@ namespace Soundbox.Speech.Recognition.Azure
         /// Optional: if <see cref="SpeechRecognizer"/> is fed from this, then we need to <see cref="IStreamAudioSource.Start"/> and <see cref="IStreamAudioSource.Stop"/> this as required.
         /// </summary>
         protected IStreamAudioSource StreamAudioSource;
+        /// <summary>
+        /// Optional: noise gate for <see cref="StreamAudioSource"/>. We call <see cref="INoiseGateStreamAudioProcessor.OnAudioStop"/> when the speech recognizer detects a speech-stopped event.
+        /// Does not need to be disposed explicitly.
+        /// </summary>
+        protected INoiseGateStreamAudioProcessor StreamAudioNoiseGate;
 
         /// <summary>
         /// Disposed both in <see cref="Dispose"/> but also in <see cref="Stop"/>: disposables for each run.
@@ -126,6 +132,10 @@ namespace Soundbox.Speech.Recognition.Azure
                 recognizer.Recognized += (sender, e) =>
                 {
                     OnSpeechEvent(e, true);
+                };
+                recognizer.SpeechEndDetected += (sender, e) =>
+                {
+                    StreamAudioNoiseGate?.OnAudioStop();
                 };
 
                 //start recognizing
@@ -267,9 +277,10 @@ namespace Soundbox.Speech.Recognition.Azure
                         (byte)streamSource.Format.BitsPerSample,
                         (byte)streamSource.Format.ChannelCount));
 
+                    byte[] bufferOptional = null;
                     streamSource.DataAvailable += (s, e) =>
                     {
-                        azureInput.Write(e.Buffer, e.BytesAvailable);
+                        azureInput.Write(e.Buffer.GetArray(ref bufferOptional), e.Buffer.Count);
                     };
 
                     this.StreamAudioSource = streamSource;
@@ -279,9 +290,11 @@ namespace Soundbox.Speech.Recognition.Azure
                 {
                     Logger.LogError(ex, $"Error while creating an Azure AudioConfig from an IStreamAudioSource. Format: SampleRate={streamSource.Format.SampleRate}, BitsPerSample={streamSource.Format.BitsPerSample}, Channels={streamSource.Format.ChannelCount}");
                     streamSource.Dispose();
-                    this.StreamAudioSource = null;
                 }
             }
+
+            this.StreamAudioSource = null;
+            this.StreamAudioNoiseGate = null;
 
             //try and use the built-in audio engine
             if (Config.AudioSource is AudioDevice audioDevice)
@@ -330,9 +343,12 @@ namespace Soundbox.Speech.Recognition.Azure
             {
                 noiseGate.SetOptions(new NoiseGateStreamAudioProcessorOptions()
                 {
-                    VolumeThreshold = 0.01f
+                    VolumeThreshold = 0.01f,
+                    Delay = TimeSpan.FromSeconds(5),
+                    DelayStopDetection = TimeSpan.FromSeconds(2)
                 });
                 streamSource = noiseGate;
+                StreamAudioNoiseGate = noiseGate;
             }
             else
             {

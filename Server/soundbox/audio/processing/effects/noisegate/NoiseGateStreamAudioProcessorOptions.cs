@@ -25,5 +25,12 @@ namespace Soundbox.Audio.Processing.Noisegate
         /// The volume needs to drop below <see cref="VolumeThreshold"/> for at least this time before the noise gate kicks in.
         /// </summary>
         public TimeSpan Delay { get; set; }
+
+        /// <summary>
+        /// Shorter <see cref="Delay"/> that is used when <see cref="INoiseGateStreamAudioProcessor.OnAudioStop"/> is called:
+        /// this is the typical time that the consumer takes to detect that the volume level dropped below the threshold
+        /// (e.g., the typical time that a speech recognizer takes to detect that no one is speaking anymore).
+        /// </summary>
+        public TimeSpan DelayStopDetection { get; set; } = TimeSpan.MinValue;
     }
 }

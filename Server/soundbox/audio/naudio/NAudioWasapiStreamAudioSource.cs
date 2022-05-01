@@ -40,8 +40,7 @@ namespace Soundbox.Audio.NAudio
 
                 this.DataAvailable?.Invoke(this, new StreamAudioSourceDataEvent()
                 {
-                    Buffer = e.Buffer,
-                    BytesAvailable = e.BytesRecorded,
+                    Buffer = new ArraySegment<byte>(e.Buffer, 0, e.BytesRecorded),
                     Format = Format
                 });
             };

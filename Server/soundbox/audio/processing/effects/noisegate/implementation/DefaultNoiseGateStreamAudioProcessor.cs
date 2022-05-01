@@ -13,6 +13,32 @@ namespace Soundbox.Audio.Processing.Noisegate.Implementation
 
         protected NoiseGateStreamAudioProcessorOptions Options { get; private set; }
 
+        /// <summary>
+        /// Counter of samples since the volume was above our threshold last.
+        /// </summary>
+        protected long SamplesUnderThreshold;
+
+        /// <summary>
+        /// Set to true via <see cref="INoiseGateStreamAudioProcessor.OnAudioStop"/>.
+        /// Afterwards in the next <see cref="OnSourceDataAvailable(StreamAudioSourceDataEvent)"/> call, we may decide to mute early when this is true.
+        /// </summary>
+        protected bool StopRequested;
+
+        /// <summary>
+        /// True: the noise gate is currently active and mutes the outgoing stream.
+        /// </summary>
+        protected bool Muted;
+
+        /// <summary>
+        /// For mode not-<see cref="NoiseGateStreamAudioProcessorOptions.ModeCutOff"/>: buffer that we use to return 0ed samples.
+        /// </summary>
+        private byte[] ZeroBuffer;
+
+        /// <summary>
+        /// Converts <see cref="SamplesUnderThreshold"/> to a time by calculating the time that must have passed via <see cref="WaveStreamAudioFormat.SampleRate"/> and <see cref="WaveStreamAudioFormat.ChannelCount"/>
+        /// </summary>
+        protected TimeSpan TimeUnderThreshold => TimeSpan.FromSeconds(((double) SamplesUnderThreshold) / WrappedAudioSource.Format.SampleRate / WrappedAudioSource.Format.ChannelCount);
+
         public void SetAudioSource(IStreamAudioSource source)
         {
             this.WrappedAudioSource = source;
@@ -25,6 +51,11 @@ namespace Soundbox.Audio.Processing.Noisegate.Implementation
             return Task.CompletedTask;
         }
 
+        public void OnAudioStop()
+        {
+            this.StopRequested = true;
+        }
+
         public event EventHandler<StreamAudioSourceDataEvent> DataAvailable;
 
         /// <summary>
@@ -35,9 +66,10 @@ namespace Soundbox.Audio.Processing.Noisegate.Implementation
         protected void OnSourceDataAvailable(StreamAudioSourceDataEvent data)
         {
             var options = this.Options;
+            var samples = data.Samples;
 
             bool overThreshold = false;
-            foreach (var sample in data.Samples)
+            foreach (var sample in samples)
             {
                 var amplitude = GetNormalizedSampleValue(sample, data.Format);
                 if (amplitude > options.VolumeThreshold)
@@ -47,31 +79,66 @@ namespace Soundbox.Audio.Processing.Noisegate.Implementation
                 }
             }
 
-            //TODO noisegate. super simple noise gate for now: per event only
-            if (!overThreshold)
+            if (overThreshold)
             {
-                if (options.ModeCutOff)
-                    //simply do nothing
-                    return;
+                //pass through
+                SamplesUnderThreshold = 0;
+                StopRequested = false;
+                Muted = false;
 
-                //return a zeroed buffer
-                byte[] zeros = new byte[data.BytesAvailable];
-                DataAvailable?.Invoke(this, new StreamAudioSourceDataEvent()
-                {
-                    Buffer = zeros,
-                    BytesAvailable = zeros.Length,
-                    Format = data.Format
-                });
+                DataAvailable?.Invoke(this, data);
             }
             else
             {
-                //pass through
-                DataAvailable?.Invoke(this, data);
+                SamplesUnderThreshold += samples.Count;
+
+                bool mute = Muted;
+
+                if (!mute)
+                {
+                    //check on the time since we were above the threshold
+                    var thresholdTime = options.Delay;
+
+                    if (StopRequested && options.DelayStopDetection.TotalMilliseconds >= 0)
+                    {
+                        //reduce our threshold time
+                        thresholdTime = options.DelayStopDetection;
+                    }
+
+                    if (TimeUnderThreshold >= thresholdTime)
+                    {
+                        mute = true;
+                    }
+                }
+
+                if (mute)
+                {
+                    Muted = true;
+                    StopRequested = false;
+
+                    if (!options.ModeCutOff)
+                    {
+                        //return a zeroed buffer
+                        if (ZeroBuffer == null || ZeroBuffer.Length < data.Buffer.Count)
+                            ZeroBuffer = new byte[data.Buffer.Count];
+                        DataAvailable?.Invoke(this, new StreamAudioSourceDataEvent()
+                        {
+                            Buffer = new ArraySegment<byte>(ZeroBuffer, 0, data.Buffer.Count),
+                            Format = data.Format
+                        });
+                    }
+                    //else: simply do nothing
+                }
+                else
+                {
+                    //pass through
+                    DataAvailable?.Invoke(this, data);
+                }
             }
         }
 
         /// <summary>
-        /// Reads one sample from the given buffer and maps it to the range of <see cref="NoiseGateStreamAudioProcessorOptions.VolumeThreshold"/>.
+        /// Analyzes the given sample and maps it to the range of <see cref="NoiseGateStreamAudioProcessorOptions.VolumeThreshold"/>.
         /// </summary>
         /// <param name="sample"></param>
         /// <param name="format"></param>
