@@ -1293,7 +1293,7 @@ namespace Soundbox
                 //nothing to do, not installed
                 return;
 
-            if (AppSettings.SpeechRecognition?.AudioDevice == null)
+            if (AppSettings.SpeechRecognition?.AudioDevice == null || AppSettings?.SpeechRecognition?.Languages == null || AppSettings.SpeechRecognition.Languages.Count == 0)
             {
                 Logger.LogInformation("No Soundbox.SpeechRecognition config");
                 return;
@@ -1342,10 +1342,9 @@ namespace Soundbox
         /// <returns></returns>
         protected SpeechRecognitionOptions SpeechRecognition_GetOptions()
         {
-            //TODO speech: config
             return new SpeechRecognitionOptions()
             {
-                Languages = new List<string>() { "de", "en" },
+                Languages = AppSettings.SpeechRecognition.Languages,
                 Phrases = NodesCache.Values.Where(node => node is ISoundboxPlayable).Cast<ISoundboxPlayable>().SelectMany(sound => sound.VoiceActivation == null ? new List<string>() : sound.VoiceActivation.SpeechPhrases).ToList()
             };
         }

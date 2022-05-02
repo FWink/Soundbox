@@ -1,4 +1,6 @@
-﻿namespace Soundbox.AppSettings
+﻿using System.Collections.Generic;
+
+namespace Soundbox.AppSettings
 {
     /// <summary>
     /// Soundbox app settings with parameters for speech recognition.<br/>
@@ -18,5 +20,10 @@
         /// The noise gate implementation will occassionally write detected peak levels into the logs, so that should give you an idea where to start.
         /// </summary>
         public float VolumeThreshold { get; set; } = 0.01f;
+
+        /// <summary>
+        /// See <see cref="Speech.Recognition.SpeechRecognitionOptions.Languages"/>
+        /// </summary>
+        public IList<string> Languages { get; set; }
     }
 }
