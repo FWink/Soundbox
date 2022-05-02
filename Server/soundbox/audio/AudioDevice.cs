@@ -15,19 +15,27 @@ namespace Soundbox.Audio
         /// <summary>
         /// Name of the audio device that should be used.
         /// </summary>
-        public virtual string AudioDeviceName { get; private set; }
+        public virtual string AudioDeviceName { get; set; }
 
         /// <summary>
         /// Alternative to <see cref="AudioDeviceName"/>: use the machine's default audio input device.
         /// </summary>
-        public virtual bool UseDefaultAudioInputDevice { get; private set; }
+        public virtual bool UseDefaultAudioInputDevice { get; set; }
 
         /// <summary>
         /// Alternative to <see cref="AudioDeviceName"/>: use the machine's default audio output device.
         /// Note that it may be possible to use an output device as a loopback input device,
         /// thus returning audio that is rendered by the output device.
         /// </summary>
-        public virtual bool UseDefaultAudioOutputDevice { get; private set; }
+        public virtual bool UseDefaultAudioOutputDevice { get; set; }
+
+        /// <summary>
+        /// For internal usage and serialization only. You should use the static factory methods instead.
+        /// </summary>
+        public AudioDevice()
+        {
+
+        }
 
         #region "Static Getters"
 

@@ -22,14 +22,19 @@ namespace Soundbox.Audio.Processing.Noisegate
         public bool ModeCutOff { get; set; } = true;
 
         /// <summary>
-        /// The volume needs to drop below <see cref="VolumeThreshold"/> for at least this time before the noise gate kicks in.
+        /// The volume needs to drop below <see cref="VolumeThreshold"/> for at least this time before the noise gate kicks in.<br/>
+        /// The absolute minimum time here is the time that the consumer takes to "settle down" into idle state.
+        /// Especially important in <see cref="ModeCutOff"/>: consumers may be stuck waiting for data, so this is the time
+        /// after which you'd expect the consumer to have processed all available data and when they'll be fine with not receiving further samples for a while.<br/>
+        /// To be on the safe side, you'd probably want to use a higher value than the absolute minimum here and then (if implemented) use the absolute minimum for <see cref="DelayStopDetection"/>.
         /// </summary>
         public TimeSpan Delay { get; set; }
 
         /// <summary>
         /// Shorter <see cref="Delay"/> that is used when <see cref="INoiseGateStreamAudioProcessor.OnAudioStop"/> is called:
-        /// this is the typical time that the consumer takes to detect that the volume level dropped below the threshold
-        /// (e.g., the typical time that a speech recognizer takes to detect that no one is speaking anymore).
+        /// this is either the typical time that the consumer takes to detect that the volume level dropped below the threshold
+        /// (e.g., the typical time that a speech recognizer takes to detect that no one is speaking anymore);
+        /// or the absolute minimum time mentioned in <see cref="Delay"/>.
         /// </summary>
         public TimeSpan DelayStopDetection { get; set; } = TimeSpan.MinValue;
     }

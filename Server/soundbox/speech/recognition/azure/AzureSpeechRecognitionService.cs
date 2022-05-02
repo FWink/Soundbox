@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Soundbox.Audio;
 using Soundbox.Audio.Processing;
 using Soundbox.Audio.Processing.Noisegate;
+using Soundbox.Speech.Recognition.AppSettings;
 using Soundbox.Util;
 using System;
 using System.Collections.Generic;
@@ -20,10 +21,28 @@ namespace Soundbox.Speech.Recognition.Azure
         protected ILogger Logger;
         protected IServiceProvider ServiceProvider;
 
-        //TODO azure: config
-        protected string AzureRegion;
-        protected string AzureSubscriptionKey;
+        #region "Config/Settings"
+
+        /// <summary>
+        /// Static app settings (API keys and such)
+        /// </summary>
+        protected SpeechRecognitionAppSettings Settings;
+
+        /// <summary>
+        /// Config for this instance (e.g., audio)
+        /// </summary>
         protected SpeechRecognitionConfig Config;
+
+        #region "Credentials"
+
+        /// <summary>
+        /// The API credentials that the next <see cref="Start(SpeechRecognitionOptions)"/> call should use.
+        /// </summary>
+        protected AppSettings.Azure.AzureSpeechRecognitionCredentials Credentials => Settings.Providers.Azure.Credentials.First();
+
+        #endregion
+
+        #endregion
 
         /// <summary>
         /// True: recognition is currently active.
@@ -63,8 +82,9 @@ namespace Soundbox.Speech.Recognition.Azure
         /// <returns>
         /// False: the given config is not compatible.
         /// </returns>
-        internal bool SetConfig(SpeechRecognitionConfig config)
+        internal bool SetConfig(SpeechRecognitionConfig config, SpeechRecognitionAppSettings settings)
         {
+            this.Settings = settings;
             this.Config = config;
             this.AudioConfig = GetAudioConfig();
 
@@ -79,7 +99,9 @@ namespace Soundbox.Speech.Recognition.Azure
             {
                 Logger.LogInformation("Starting speech recognition");
 
-                var speechConfig = SpeechConfig.FromEndpoint(new Uri($"wss://{AzureRegion}.stt.speech.microsoft.com/speech/universal/v2"), AzureSubscriptionKey);
+                var credentials = this.Credentials;
+
+                var speechConfig = SpeechConfig.FromEndpoint(new Uri($"wss://{credentials.Region}.stt.speech.microsoft.com/speech/universal/v2"), credentials.SubscriptionKey);
                 speechConfig.SetProfanity(ProfanityOption.Raw);
 
                 if (options.Languages.Count > 1)
@@ -343,7 +365,7 @@ namespace Soundbox.Speech.Recognition.Azure
             {
                 noiseGate.SetOptions(new NoiseGateStreamAudioProcessorOptions()
                 {
-                    VolumeThreshold = 0.01f,
+                    VolumeThreshold = Config.VolumeThreshold,
                     Delay = TimeSpan.FromSeconds(5),
                     DelayStopDetection = TimeSpan.FromSeconds(2)
                 });

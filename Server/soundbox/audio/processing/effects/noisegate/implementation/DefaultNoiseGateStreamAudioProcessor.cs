@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Threading.Tasks;
 
 namespace Soundbox.Audio.Processing.Noisegate.Implementation
@@ -37,7 +38,34 @@ namespace Soundbox.Audio.Processing.Noisegate.Implementation
         /// <summary>
         /// Converts <see cref="SamplesUnderThreshold"/> to a time by calculating the time that must have passed via <see cref="WaveStreamAudioFormat.SampleRate"/> and <see cref="WaveStreamAudioFormat.ChannelCount"/>
         /// </summary>
-        protected TimeSpan TimeUnderThreshold => TimeSpan.FromSeconds(((double) SamplesUnderThreshold) / WrappedAudioSource.Format.SampleRate / WrappedAudioSource.Format.ChannelCount);
+        protected TimeSpan TimeUnderThreshold => SamplesToTime(SamplesUnderThreshold, WrappedAudioSource.Format);
+
+        #region "Debug/Analytics"
+
+        protected ILogger Logger;
+
+        /// <summary>
+        /// False: do not print the occassional analytics information.
+        /// </summary>
+        protected bool AnalyticsLoggingEnabled;
+
+        /// <summary>
+        /// Kind of a timer/count"up": every couple of minutes, we print some information about the min/max volume into the logs.
+        /// </summary>
+        private long AnalyticsSampleCount;
+
+        /// <summary>
+        /// False: we haven't printed a single min/max volume event into the logs yet.
+        /// </summary>
+        private bool AnalyticsLoggedOnce = false;
+
+        #endregion
+
+        public DefaultNoiseGateStreamAudioProcessor(ILogger<DefaultNoiseGateStreamAudioProcessor> logger)
+        {
+            this.Logger = logger;
+            AnalyticsLoggingEnabled = logger.IsEnabled(LogLevel.Trace);
+        }
 
         public void SetAudioSource(IStreamAudioSource source)
         {
@@ -59,6 +87,17 @@ namespace Soundbox.Audio.Processing.Noisegate.Implementation
         public event EventHandler<StreamAudioSourceDataEvent> DataAvailable;
 
         /// <summary>
+        /// Calculates the length of the given samples. I.e., how long a capture device would take to produce that many samples.
+        /// </summary>
+        /// <param name="samples"></param>
+        /// <param name="format"></param>
+        /// <returns></returns>
+        public static TimeSpan SamplesToTime(long samples, WaveStreamAudioFormat format)
+        {
+            return TimeSpan.FromSeconds(((double)samples) / format.SampleRate / format.ChannelCount);
+        }
+
+        /// <summary>
         /// Called when <see cref="WrappedAudioSource"/> raises <see cref="IStreamAudioSource.DataAvailable"/>.
         /// Processing is happening here: checks on the volume of the received samples and passes the event on to <see cref="DataAvailable"/> if appropriate.
         /// </summary>
@@ -68,6 +107,10 @@ namespace Soundbox.Audio.Processing.Noisegate.Implementation
             var options = this.Options;
             var samples = data.Samples;
 
+            bool logStatistics = AnalyticsLoggingEnabled && (!AnalyticsLoggedOnce || SamplesToTime(AnalyticsSampleCount, data.Format) > TimeSpan.FromMinutes(10));
+            float statisticsMax = float.MinValue, statisticsMin = float.MaxValue;
+
+            //evaluate the received samples
             bool overThreshold = false;
             foreach (var sample in samples)
             {
@@ -75,10 +118,29 @@ namespace Soundbox.Audio.Processing.Noisegate.Implementation
                 if (amplitude > options.VolumeThreshold)
                 {
                     overThreshold = true;
-                    break;
+
+                    if (!logStatistics)
+                        break;
                 }
+
+                if (amplitude > statisticsMax)
+                    statisticsMax = amplitude;
+                if (amplitude < statisticsMin)
+                    statisticsMin = amplitude;
             }
 
+
+            //print analytics every now and then
+            if (logStatistics && samples.Count > 0)
+            {
+                Logger.LogTrace($"NoiseGate min|max levels: {statisticsMin}|{statisticsMax}");
+                AnalyticsLoggedOnce = true;
+                AnalyticsSampleCount = 0;
+            }
+            AnalyticsSampleCount += samples.Count;
+
+
+            //pass through or mute
             if (overThreshold)
             {
                 //pass through

@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Soundbox.AppSettings;
 using Soundbox.Speech.Recognition;
 using Soundbox.Users;
 using Soundbox.Util;
@@ -35,6 +37,8 @@ namespace Soundbox
 
         protected IServiceProvider ServiceProvider;
 
+        protected SoundboxAppSettings AppSettings;
+
         /// <summary>
         /// Absolute path of the soundbox's root directory.
         /// This is not however the root directory of <see cref="SoundboxNode"/>s
@@ -59,10 +63,13 @@ namespace Soundbox
             ISoundboxConfigProvider config,
             IDatabaseProvider database,
             ISpeechRecognitionServiceProvider speechRecognitionServiceProvider,
-            ILogger<Soundbox> logger)
+            ILogger<Soundbox> logger,
+            IOptions<SoundboxAppSettings> appSettings)
         {
             this.Logger = logger;
             logger.LogInformation("Soundbox is starting");
+
+            this.AppSettings = appSettings.Value ?? new SoundboxAppSettings();
 
             this.ServiceProvider = serviceProvider;
             this.HubContext = hubContext;
@@ -1286,10 +1293,16 @@ namespace Soundbox
                 //nothing to do, not installed
                 return;
 
-            //TODO stt: config
+            if (AppSettings.SpeechRecognition?.AudioDevice == null)
+            {
+                Logger.LogInformation("No Soundbox.SpeechRecognition config");
+                return;
+            }
+
             var config = new SpeechRecognitionConfig()
             {
-                AudioSource = Audio.AudioDevice.FromDefaultAudioDevice()
+                AudioSource = AppSettings.SpeechRecognition.AudioDevice,
+                VolumeThreshold = AppSettings.SpeechRecognition.VolumeThreshold
             };
 
             var recognizer = provider.GetSpeechRecognizer(config);

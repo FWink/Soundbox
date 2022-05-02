@@ -4,6 +4,7 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <Platforms>AnyCPU;x64;x86</Platforms>
     <RootNamespace>Soundbox</RootNamespace>
+    <UserSecretsId>8cb3e533-1ac2-49b1-b4eb-d972a009c8ec</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(Platform)' == 'x64'">
