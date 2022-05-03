@@ -38,7 +38,12 @@ namespace Soundbox.Speech.Recognition.Azure
         /// <summary>
         /// The API credentials that the next <see cref="Start(SpeechRecognitionOptions)"/> call should use.
         /// </summary>
-        protected AppSettings.Azure.AzureSpeechRecognitionCredentials Credentials => Settings.Providers.Azure.Credentials.First();
+        protected AppSettings.Azure.AzureSpeechRecognitionCredentials Credentials => Settings.Providers.Azure.Credentials[CredentialsIndex];
+
+        /// <summary>
+        /// Current index in <see cref="AppSettings.Azure.AzureSpeechRecognitionProviderAppSettings.Credentials"/>
+        /// </summary>
+        private int CredentialsIndex;
 
         #endregion
 
@@ -140,6 +145,22 @@ namespace Soundbox.Speech.Recognition.Azure
                 //prepare events
                 recognizer.Canceled += (sender, e) =>
                 {
+                    SpeechRecognizer = null;
+                    Dispose(Disposables);
+
+                    if (e.ErrorCode == CancellationErrorCode.Forbidden || e.ErrorCode == CancellationErrorCode.AuthenticationFailure)
+                    {
+                        //out of quota (or invalid key, try the next one anyway)
+                        int credentialsIndexCurrent = CredentialsIndex;
+                        if (NextCredentials())
+                        {
+                            Logger.LogInformation($"Out of quota for credentials {credentialsIndexCurrent}. Restarting with {CredentialsIndex}");
+
+                            Threading.Tasks.FireAndForget(() => Start(options));
+                            return;
+                        }
+                    }
+
                     Logger.LogWarning($"Recognition stopped. reason={e.Reason}, erroCode={e.ErrorCode}, details={e.ErrorDetails}");
 
                     Stopped?.Invoke(this, new SpeechRecognitionStoppedEvent()
@@ -164,7 +185,7 @@ namespace Soundbox.Speech.Recognition.Azure
                 await recognizer.StartContinuousRecognitionAsync();
 
                 //start our audio source
-                if (StreamAudioSource != null)
+                if (!IsRunning && StreamAudioSource != null)
                     await StreamAudioSource.Start();
             }
             catch (Exception e)
@@ -206,9 +227,9 @@ namespace Soundbox.Speech.Recognition.Azure
                 //simply disposing the speechRecognizer takes 10s
                 await recognizer.StopContinuousRecognitionAsync();
 
-                Dispose(Disposables);
                 IsRunning = false;
                 SpeechRecognizer = null;
+                Dispose(Disposables);
 
                 if (withEvent)
                 {
@@ -436,6 +457,27 @@ namespace Soundbox.Speech.Recognition.Azure
             {
                 //do nothing
             }
+        }
+
+        #endregion
+
+        #region "Credentials"
+
+        /// <summary>
+        /// Attempts to switch <see cref="Credentials"/> to the next available set of credentials.
+        /// </summary>
+        /// <returns>
+        /// True: there was at least one more set of credentials available, thus <see cref="Credentials"/> points to a fresh set of credentials now.
+        /// </returns>
+        protected bool NextCredentials()
+        {
+            var list = Settings.Providers.Azure.Credentials;
+            if (CredentialsIndex + 1 < list.Count)
+            {
+                ++CredentialsIndex;
+                return true;
+            }
+            return false;
         }
 
         #endregion

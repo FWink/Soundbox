@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Threading.Tasks;
 
 namespace Soundbox.Threading
@@ -8,6 +9,8 @@ namespace Soundbox.Threading
     /// </summary>
     public static class Tasks
     {
+        private static readonly ILogger LoggerUncaught = Logging.StaticLoggerProvider.CreateLogger("Soundbox.Uncaught");
+
         #region "Taskify"
 
         /// <summary>
@@ -47,6 +50,46 @@ namespace Soundbox.Threading
                 act();
                 return null;
             });
+        }
+
+        #endregion
+
+        #region "Fire and forget"
+
+        /// <summary>
+        /// Asynchronously executes the given function and catches and logs errors.
+        /// Used when you aren't interested in the task's result.
+        /// </summary>
+        /// <param name="func"></param>
+        public static void FireAndForget(Func<Task> func)
+        {
+            Task.Run(() =>
+            {
+                Task task;
+                try
+                {
+                    task = func();
+                }
+                catch (Exception e)
+                {
+                    LoggerUncaught.LogError(e, "Uncaught error in FireAndForget");
+                    return;
+                }
+
+                _ = task.ContinueWith(taskResult =>
+                {
+                    LoggerUncaught.LogError(taskResult.Exception, "Uncaught error in FireAndForget");
+                }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+            });
+        }
+
+        /// <summary>
+        /// See <see cref="FireAndForget(Func{Task})"/>
+        /// </summary>
+        /// <param name="act"></param>
+        public static void FireAndForget(Action act)
+        {
+            FireAndForget(() => Taskify(act));
         }
 
         #endregion
