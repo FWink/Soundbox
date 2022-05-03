@@ -14,6 +14,7 @@
 
             connection = new signalR.HubConnectionBuilder()
                 .withUrl("/api/v1/ws")
+                .withAutomaticReconnect()
                 .build();
 
             connection.start().then(() => {

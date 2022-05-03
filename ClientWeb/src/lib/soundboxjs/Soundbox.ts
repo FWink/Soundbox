@@ -14,6 +14,7 @@ import { IUploadStatus, IUploadProgress } from './UploadStatus';
 import { StorageProvider } from './StorageProvider';
 import { SoundsDatabase } from './SoundsDatabase';
 import { ISoundboxFileChangeEvent, ISoundboxFileMoveEvent, SoundboxFileChangeEventType } from './SoundboxFileChangeEvent';
+import { SoundboxConnectionState } from './SoundboxConnectionState';
 
 /**
  * Represents a Soundbox server with a two-way realtime communication channel (via SignalR).
@@ -32,20 +33,6 @@ export class Soundbox {
      * */
     protected readonly storage: StorageProvider;
 
-    protected connection: signalR.HubConnection;
-    /**
-     * True: {@link start} has been called successfully and we are ready to go.
-     */
-    protected connected: boolean = false;
-    /**
-     * True: {@link start} is currently working.
-     */
-    protected connecting: boolean = false;
-    /**
-     * Used in {@link start} to update the caller should {@link connecting} be true when the method is called (only one connection attempt may be underway at once).
-     */
-    protected connectingPromise: Promise<any>;
-
     /**
      * 
      * @param storage Persistent storage where the soundbox keeps a list of available sounds to prevent loading it from the server on each new session, thus decreasing the startup time.
@@ -60,6 +47,49 @@ export class Soundbox {
     }
 
     //#region connection
+
+    protected connection: signalR.HubConnection;
+
+    /**
+     * True: {@link start} has been called successfully and we are ready to go.
+     */
+    protected get connected(): boolean {
+        return this.connectionStateCurrent == SoundboxConnectionState.Connected;
+    }
+    /**
+     * True: {@link start} is currently working.
+     */
+    protected get connecting(): boolean {
+        let state = this.connectionStateCurrent;
+        return state == SoundboxConnectionState.Connecting || state == SoundboxConnectionState.Reconnecting;
+    }
+
+    /**
+     * Used in {@link start} to update the caller should {@link connecting} be true when the method is called (only one connection attempt may be underway at once).
+     */
+    protected connectingPromise: Promise<any>;
+
+    /**
+     * Our internal connection state (from {@link connectionStateSubject}).
+     * @param state
+     */
+    protected set connectionStateCurrent(state: SoundboxConnectionState) {
+        this.connectionStateSubject.next(state);
+    }
+
+    protected get connectionStateCurrent(): SoundboxConnectionState {
+        return this.connectionStateSubject.getValue();
+    }
+
+    /**
+     * Alias of {@link connectionState}. Used to emit changes in the connection state.
+     */
+    protected readonly connectionStateSubject: BehaviorSubject<SoundboxConnectionState> = new BehaviorSubject<SoundboxConnectionState>(SoundboxConnectionState.Initial);
+
+    /**
+     * Updated when the soundbox's connection state changed.
+     */
+    public readonly connectionState: Observable<SoundboxConnectionState> = this.connectionStateSubject;
 
     /**
      * Starts the Soundbox handler and connects to the server or ensures that we are connected to the server for repeated calls.
@@ -80,17 +110,18 @@ export class Soundbox {
 
         this.connection?.stop();
 
-        this.connecting = true;
+        this.connectionStateCurrent = SoundboxConnectionState.Connecting;
 
         const connection = new signalR.HubConnectionBuilder()
             .withUrl(this.baseUrl + "/api/v1/ws")
+            .withAutomaticReconnect()
             .build();
 
         this.connectingPromise = connection.start()
             .then(() => {
                 this.connection = connection;
 
-                //setup listeners once
+                //set up listeners once
                 this.connection.on("OnVolumeChanged", (volume: number) => {
                     this.onVolumeChanged(volume);
                 });
@@ -106,16 +137,74 @@ export class Soundbox {
             })
             //further setup for each reconnect
             .then(() => {
-                return this.onConnected();
+                return this.onConnected()
+                    .catch(error => {
+                        this.onConnectFetchError(connection, error);
+                        throw error;
+                    });
             })
             .then(() => {
-                this.connected = true;
+                this.connectionStateCurrent = SoundboxConnectionState.Connected;
+            })
+            .catch(error => {
+                //automatic reconnect doesn't work here
+                this.connectionStateCurrent = SoundboxConnectionState.Disconnected;
+                throw error;
             })
             .finally(() => {
-                this.connecting = false;
                 this.connectingPromise = null;
             });
+
+        //set up the reconnected/disconnected handling
+        connection.onreconnecting(() => {
+            this.connectionStateCurrent = SoundboxConnectionState.Reconnecting;
+
+            //wait for the next connection state change
+            this.connectingPromise = new Promise((resolve, reject) => {
+                let first = true;
+                let subscription = this.connectionState.subscribe(state => {
+                    if (first) {
+                        //is a BehaviorSubject. we'll always get one event right away
+                        first = false;
+                        return;
+                    }
+
+                    this.connectingPromise = null;
+                    if (state == SoundboxConnectionState.Connected)
+                        resolve();
+                    else
+                        reject("Could not reconnect");
+
+                    if (subscription)
+                        subscription.unsubscribe();
+                });
+            });
+        })
+        connection.onreconnected(() => {
+            this.onConnected()
+                .then(() => {
+                    this.connectionStateCurrent = SoundboxConnectionState.Connected;
+                })
+                .catch(error => {
+                    this.onConnectFetchError(connection, error);
+                });
+        });
+        connection.onclose(() => {
+            this.connectionStateCurrent = SoundboxConnectionState.Disconnected;
+        });
+
         return this.connectingPromise;
+    }
+
+    /**
+     * Called from {@link #start} after we've connected successfully but after {@link #onConnected} threw an error.
+     * This closes the connection and transitions into {@link SoundboxConnectionState#Disconnected}.
+     * @param connection
+     */
+    private onConnectFetchError(connection: signalR.HubConnection, error?: any) {
+        connection?.stop();
+        this.connectionStateCurrent = SoundboxConnectionState.Disconnected;
+        console.error("Unrecoverable error after connecting", error);
     }
 
     /**
@@ -132,8 +221,7 @@ export class Soundbox {
         }
 
         this.connection?.stop();
-        this.connecting = false;
-        this.connected = false;
+        this.connectionStateCurrent = SoundboxConnectionState.Disconnected;
     }
 
     /**
@@ -244,7 +332,13 @@ export class Soundbox {
     protected loadSounds(): Promise<ISoundboxDirectory> {
 
         let serverPromise = this.serverGetSounds(null, false);
-        let storagePromise = this.storage.get(Soundbox.STORAGE_KEY_SOUNDS_TREE);
+        let storagePromise: Promise<ISoundboxDirectory>;
+        if (this.currentSoundsTree)
+            //already loaded this earlier
+            storagePromise = Promise.resolve(this.currentSoundsTree);
+        else
+            //load from storage
+            storagePromise = this.storage.get(Soundbox.STORAGE_KEY_SOUNDS_TREE);
 
         let fromStorage: ISoundboxDirectory;
         let fromServer: ISoundboxDirectory;

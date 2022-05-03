@@ -2,7 +2,6 @@
 import { Soundbox } from '../lib/soundboxjs/Soundbox';
 import { ISound } from '../lib/soundboxjs/Sound';
 import { IUploadStatus, IUploadProgress } from '../lib/soundboxjs/UploadStatus';
-import { stat } from 'fs';
 
 @Component({
     templateUrl: 'SoundboxMainPage.html',
