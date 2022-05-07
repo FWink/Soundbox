@@ -13,6 +13,8 @@ export class SoundboxMainPage implements OnInit {
 
     pitch: number = 100;
 
+    sounds: ISound[];
+
     newSoundsPending: NewSound[] = [];
     uploadStatusCurrent: IUploadStatus;
     uploadProgressTotal: IUploadProgress;
@@ -26,6 +28,8 @@ export class SoundboxMainPage implements OnInit {
 
     ngOnInit(): void {
         this.soundbox.sounds.subscribe(newSoundList => {
+            this.sounds = newSoundList;
+
             //check on the sounds we're editing right now
             let ids = newSoundList.map(sound => sound.id);
             this.editSounds = this.editSounds.filter(editSound => ids.includes(editSound.sound.id));
@@ -197,6 +201,15 @@ export class SoundboxMainPage implements OnInit {
     startEdit(sound: ISound) {
         if (!this.editSounds.find(editSound => editSound.sound.id === sound.id))
             this.editSounds.push(new EditSound(sound));
+    }
+
+    /**
+     * Calls {@link startEdit} on all our sounds, thus creating an editable table of all sounds.
+     */
+    startEditAll() {
+        for (let sound of this.sounds) {
+            this.startEdit(sound);
+        }
     }
 
     /**

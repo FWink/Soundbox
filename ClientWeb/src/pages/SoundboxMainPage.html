@@ -57,10 +57,10 @@
                 {{sound.fileName}}
             </td>
             <td>
-                <input type="text" [(ngModel)]="sound.name" />
+                <input type="text" [(ngModel)]="sound.name" class="soundbox-edit-name" />
             </td>
             <td>
-                <input type="text" [(ngModel)]="sound.speechTriggers" />
+                <input type="text" [(ngModel)]="sound.speechTriggers" class="soundbox-edit-speech-triggers" />
             </td>
             <td>
                 <input type="text" [(ngModel)]="sound.speechPhrases" />
@@ -71,6 +71,7 @@
         </tr>
     </table>
 </div>
+<button type="button" (click)="startEditAll()">Edit all sounds</button>
 <div *ngIf="editSounds.length">
     Edit:
     <table>
@@ -81,10 +82,10 @@
         </tr>
         <tr *ngFor="let sound of editSounds">
             <td>
-                <input type="text" [(ngModel)]="sound.name" />
+                <input type="text" [(ngModel)]="sound.name" class="soundbox-edit-name" />
             </td>
             <td>
-                <input type="text" [(ngModel)]="sound.speechTriggers" />
+                <input type="text" [(ngModel)]="sound.speechTriggers" class="soundbox-edit-speech-triggers" />
             </td>
             <td>
                 <input type="text" [(ngModel)]="sound.speechPhrases" />
