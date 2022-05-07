@@ -8,5 +8,10 @@
     public class StreamAudioFormat
     {
         public virtual StreamAudioFormatType Type { get; protected set; }
+
+        public StreamAudioFormat(StreamAudioFormatType type)
+        {
+            Type = type;
+        }
     }
 }

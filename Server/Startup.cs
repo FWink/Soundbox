@@ -99,8 +99,9 @@ namespace Soundbox
 
             //audio processing
             //NAudio
-            services.AddTransient<Audio.IDeviceStreamAudioSourceProvider, Audio.NAudio.NAudioStreamAudioSourceProvider>();
+            services.AddTransient<Audio.IDeviceStreamAudioSourceProvider, Audio.NAudio.NAudioDeviceStreamAudioSourceProvider>();
             services.AddTransient<Audio.Processing.IStreamAudioResamplerProvider, Audio.NAudio.NAudioStreamAudioResamplerProvider>();
+            services.AddTransient<Audio.IBlobStreamAudioSourceProvider, Audio.NAudio.NAudioBlobStreamAudioSourceProvider>();
             if (isWindows)
             {
                 services.AddTransient<Audio.NAudio.NAudioWasapiStreamAudioSource>();

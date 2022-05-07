@@ -5,14 +5,6 @@
     /// </summary>
     public class WaveStreamAudioFormat : StreamAudioFormat
     {
-        public override StreamAudioFormatType Type
-        {
-            get
-            {
-                return StreamAudioFormatType.Wave;
-            }
-        }
-
         public int SampleRate { get; private set; }
 
         public int BitsPerSample { get; private set; }
@@ -39,7 +31,7 @@
 
         #endregion
 
-        protected WaveStreamAudioFormat(int sampleRate, int bitsPerSample, int channelCount, bool intEncoded, bool intEncodingSigned, bool floatEncoded, bool byteOrderLittleEndian)
+        protected WaveStreamAudioFormat(int sampleRate, int bitsPerSample, int channelCount, bool intEncoded, bool intEncodingSigned, bool floatEncoded, bool byteOrderLittleEndian) : base(StreamAudioFormatType.Wave)
         {
             SampleRate = sampleRate;
             BitsPerSample = bitsPerSample;

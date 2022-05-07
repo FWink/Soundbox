@@ -2,9 +2,14 @@
 {
     public enum StreamAudioFormatType
     {
+        Unknown = 0,
         /// <summary>
         /// See <see cref="WaveStreamAudioFormat"/>
         /// </summary>
-        Wave = 1
+        Wave,
+        Mp3,
+        Vorbis,
+        Opus,
+        Aac
     }
 }
