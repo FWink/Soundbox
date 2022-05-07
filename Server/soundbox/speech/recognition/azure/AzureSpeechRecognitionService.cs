@@ -161,7 +161,10 @@ namespace Soundbox.Speech.Recognition.Azure
                         }
                     }
 
-                    Logger.LogWarning($"Recognition stopped. reason={e.Reason}, erroCode={e.ErrorCode}, details={e.ErrorDetails}");
+                    if (e.Reason != CancellationReason.EndOfStream && e.Reason != CancellationReason.CancelledByUser)
+                    {
+                        Logger.LogWarning($"Recognition stopped. reason={e.Reason}, erroCode={e.ErrorCode}, details={e.ErrorDetails}");
+                    }
 
                     Stopped?.Invoke(this, new SpeechRecognitionStoppedEvent()
                     {
@@ -325,6 +328,14 @@ namespace Soundbox.Speech.Recognition.Azure
                     {
                         azureInput.Write(e.Buffer.GetArray(ref bufferOptional), e.Buffer.Count);
                     };
+                    streamSource.Stopped += (s, e) =>
+                    {
+                        if (e.Cause == StreamAudioSourceStoppedCause.Stopped)
+                        {
+                            //signal end-of-stream to Azure
+                            azureInput.Close();
+                        }
+                    };
 
                     this.StreamAudioSource = streamSource;
                     return AudioConfig.FromStreamInput(azureInput);
@@ -364,14 +375,11 @@ namespace Soundbox.Speech.Recognition.Azure
                 //take care to keep the original stream intact
                 streamSource = new NonDisposingStreamAudioSource(streamSource);
             }
-            if (streamSource == null && configSource is AudioDevice audioDevice)
+            else
             {
-                //read from device
-                var provider = ServiceProvider.GetService(typeof(IDeviceStreamAudioSourceProvider)) as IDeviceStreamAudioSourceProvider;
-                if (provider != null)
-                {
-                    streamSource = provider.GetStreamAudioSource(audioDevice);
-                }
+                //read from blob/device
+                var provider = ServiceProvider.GetService(typeof(IStreamAudioSourceProvider)) as IStreamAudioSourceProvider;
+                streamSource = provider?.GetStreamAudioSource(configSource);
             }
             if (streamSource == null)
             {

@@ -47,7 +47,7 @@ namespace Soundbox.Audio.NAudio
                             //end of stream reached
                             Stopped?.Invoke(this, new StreamAudioSourceStoppedEvent()
                             {
-                                Message = "End of stream"
+                                Cause = StreamAudioSourceStoppedCause.End
                             });
                             return;
                         }
@@ -62,13 +62,14 @@ namespace Soundbox.Audio.NAudio
                 {
                     Stopped?.Invoke(this, new StreamAudioSourceStoppedEvent()
                     {
-                        Message = "Stopped"
+                        Cause = StreamAudioSourceStoppedCause.Stopped
                     });
                 }
                 catch (Exception ex)
                 {
                     Stopped?.Invoke(this, new StreamAudioSourceStoppedEvent()
                     {
+                        Cause = StreamAudioSourceStoppedCause.Exception,
                         Exception = ex
                     });
                     throw;

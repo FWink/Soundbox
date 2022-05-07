@@ -18,6 +18,11 @@ namespace Soundbox.Audio.NAudio
         protected WasapiCapture Capture;
 
         /// <summary>
+        /// True: <see cref="WasapiCapture.RecordingStopped"/> is raised because <see cref="Stop"/> has been called.
+        /// </summary>
+        protected bool StopRequested;
+
+        /// <summary>
         /// Initializes this audio source with the given audio device. <see cref="Start"/> may be called afterwards.
         /// </summary>
         /// <param name="device"></param>
@@ -47,10 +52,16 @@ namespace Soundbox.Audio.NAudio
 
             this.Capture.RecordingStopped += (s, e) =>
             {
+                var cause = StreamAudioSourceStoppedCause.Unknown;
+                if (StopRequested)
+                    cause = StreamAudioSourceStoppedCause.Stopped;
+                else if (e.Exception != null)
+                    cause = StreamAudioSourceStoppedCause.Exception;
+
                 this.Stopped?.Invoke(this, new StreamAudioSourceStoppedEvent()
                 {
-                    Exception = e.Exception,
-                    Message = e.Exception == null ? "Unknown" : e.Exception.Message
+                    Cause = cause,
+                    Exception = e.Exception
                 });
             };
         }
@@ -59,6 +70,7 @@ namespace Soundbox.Audio.NAudio
         {
             return Tasks.Taskify(() =>
             {
+                StopRequested = false;
                 Capture.StartRecording();
             });
         }
@@ -67,6 +79,7 @@ namespace Soundbox.Audio.NAudio
         {
             return Tasks.Taskify(() =>
             {
+                StopRequested = true;
                 Capture.StopRecording();
             });
         }

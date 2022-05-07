@@ -98,6 +98,8 @@ namespace Soundbox
             services.AddTransient<IPreferencesProvider<double>, LiteDbPreferencesProvider<double>>();
 
             //audio processing
+            services.AddTransient<Audio.IStreamAudioSourceProvider, Audio.DefaultStreamAudioSourceProvider>();
+
             //NAudio
             services.AddTransient<Audio.IDeviceStreamAudioSourceProvider, Audio.NAudio.NAudioDeviceStreamAudioSourceProvider>();
             services.AddTransient<Audio.Processing.IStreamAudioResamplerProvider, Audio.NAudio.NAudioStreamAudioResamplerProvider>();
