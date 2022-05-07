@@ -18,11 +18,19 @@ export class SoundboxMainPage implements OnInit {
     uploadProgressTotal: IUploadProgress;
     uploadsInProgress: number = 0;
 
+    editSounds: EditSound[] = [];
+
     constructor(soundbox: Soundbox) {
         this.soundbox = soundbox;
     }
 
     ngOnInit(): void {
+        this.soundbox.sounds.subscribe(newSoundList => {
+            //check on the sounds we're editing right now
+            let ids = newSoundList.map(sound => sound.id);
+            this.editSounds = this.editSounds.filter(editSound => ids.includes(editSound.sound.id));
+        });
+
         this.soundbox.start();
     }
 
@@ -60,7 +68,7 @@ export class SoundboxMainPage implements OnInit {
         this.uploadProgressTotal = null;
 
         for (let file of files) {
-            this.newSoundsPending.push(new NewSound(this.soundbox, file));
+            this.newSoundsPending.push(new NewSound(file));
         }
     }
 
@@ -179,18 +187,59 @@ export class SoundboxMainPage implements OnInit {
     }
 
     //#endregion
+
+    //#region Edit
+
+    /**
+     * Starts editing this sound: shows a UI where the sound's name, voice activation etc can be modified.
+     * @param sound
+     */
+    startEdit(sound: ISound) {
+        if (!this.editSounds.find(editSound => editSound.sound.id === sound.id))
+            this.editSounds.push(new EditSound(sound));
+    }
+
+    /**
+     * Stops editing the given sound.
+     * @param sound
+     */
+    stopEdit(sound: EditSound) {
+        for (let i = 0; i < this.editSounds.length; ++i) {
+            if (this.editSounds[i] == sound) {
+                this.editSounds.splice(i, 1);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Sends the sound's modified inputs to the server and on success, stops editing this sound.
+     * The list of sounds is updated automatically.
+     * @param sound
+     */
+    edit(sound: EditSound) {
+        let editSound: ISound = {
+            ...sound.sound
+        };
+        editSound.name = sound.name;
+        editSound.voiceActivation = {
+            speechTriggers: sound.getSpeechTriggers(),
+            speechPhrases: sound.getSpeechPhrases()
+        };
+
+        this.soundbox.edit(editSound).then(() => {
+            this.stopEdit(sound);
+        });
+    }
+
+    //#endregion
 }
 
 /**
- * Represents one new sound that the user is currently setting up (entering a name and additional information).
+ * A sound that is currently being uploaded or edited.
  * */
-class NewSound {
-    public readonly soundbox: Soundbox;
-    public readonly file: File;
-
-    public get fileName(): string {
-        return this.file.name;
-    }
+class EditSound {
+    public readonly sound?: ISound;
 
     public name: string;
 
@@ -198,26 +247,15 @@ class NewSound {
 
     public speechPhrases: string;
 
-    public constructor(soundbox: Soundbox, file: File) {
-        this.soundbox = soundbox;
-        this.file = file;
-        this.name = NewSound.getNameFromFileName(this.fileName);
-        this.speechTriggers = this.name;
-    }
-
-    /**
-     * Turns the given file name into a human-readable default name for the uploaded sound.
-     * @param fileName
-     */
-    public static getNameFromFileName(fileName: string): string {
-        //remove file type
-        let name = fileName.replace(/\.[^.]+$/, "");
-        //remove some whitespace replacements
-        name = name.replace(/[\-_;]/g, " ");
-        //remove multiple white spaces
-        name = name.replace(/\s{2,}/g, " ");
-
-        return name;
+    public constructor(sound?: ISound) {
+        this.sound = sound;
+        if (sound) {
+            this.name = sound.name;
+            if (sound.voiceActivation) {
+                this.speechTriggers = sound.voiceActivation.speechTriggers.join(";");
+                this.speechPhrases = sound.voiceActivation.speechPhrases.join(";");
+            }
+        }
     }
 
     /**
@@ -236,5 +274,38 @@ class NewSound {
         if (!this.speechPhrases)
             return [];
         return this.speechPhrases.split(";").map(str => str.trim()).filter(str => str.length > 0);
+    }
+}
+
+/**
+ * Represents one new sound that the user is currently setting up (entering a name and additional information).
+ * */
+class NewSound extends EditSound {
+    public readonly file: File;
+
+    public get fileName(): string {
+        return this.file.name;
+    }
+
+    public constructor(file: File) {
+        super(null);
+        this.file = file;
+        this.name = NewSound.getNameFromFileName(this.fileName);
+        this.speechTriggers = this.name;
+    }
+
+    /**
+     * Turns the given file name into a human-readable default name for the uploaded sound.
+     * @param fileName
+     */
+    public static getNameFromFileName(fileName: string): string {
+        //remove file type
+        let name = fileName.replace(/\.[^.]+$/, "");
+        //remove some whitespace replacements
+        name = name.replace(/[\-_;]/g, " ");
+        //remove multiple white spaces
+        name = name.replace(/\s{2,}/g, " ");
+
+        return name;
     }
 }

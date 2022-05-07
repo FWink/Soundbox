@@ -3,6 +3,9 @@
 </div>
 <div *ngIf="contextMenuActive">
     <div class="soundbox-sound-context" [style.top.px]="contextMenuY" [style.left.px]="contextMenuX">
+        <div (click)="startEdit(contextMenuSound); hideSoundContextMenu();">
+            Edit
+        </div>
         <div (click)="delete(contextMenuSound); hideSoundContextMenu();">
             Delete
         </div>
@@ -43,8 +46,8 @@
         <tr>
             <th>File name</th>
             <th>Sound name</th>
-            <th>Speech: trigger (separate with ;)</th>
-            <th>Speech: special words (separate with ;)</th>
+            <th>Speech: trigger (separate with ; )</th>
+            <th>Speech: special words (separate with ; )</th>
             <th>
                 <button type="button" (click)="uploadAll()" [disabled]="uploadsInProgress > 0">Upload All</button>
             </th>
@@ -64,6 +67,33 @@
             </td>
             <td>
                 <button type="button" (click)="upload(sound)" [disabled]="uploadsInProgress > 0">Upload</button>
+            </td>
+        </tr>
+    </table>
+</div>
+<div *ngIf="editSounds.length">
+    Edit:
+    <table>
+        <tr>
+            <th>Sound name</th>
+            <th>Speech: trigger (separate with ; )</th>
+            <th>Speech: special words (separate with ; )</th>
+        </tr>
+        <tr *ngFor="let sound of editSounds">
+            <td>
+                <input type="text" [(ngModel)]="sound.name" />
+            </td>
+            <td>
+                <input type="text" [(ngModel)]="sound.speechTriggers" />
+            </td>
+            <td>
+                <input type="text" [(ngModel)]="sound.speechPhrases" />
+            </td>
+            <td>
+                <button type="button" (click)="edit(sound)">Done</button>
+            </td>
+            <td>
+                <button type="button" (click)="stopEdit(sound)">Cancel</button>
             </td>
         </tr>
     </table>

@@ -2,6 +2,10 @@
     font-family: Helvetica, Arial, sans-serif;
 }
 
+:host > :not(:first-child) {
+    margin-top: 8px;
+}
+
 .soundbox-sound-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

@@ -969,6 +969,32 @@ export class Soundbox {
 
     //#region Edit
 
+    /**
+     * Edits the given file (sound, directory, macro...) on the server.
+     * Causes an EDIT event to be raised, for example via {@link sounds}<br/>
+     * Currently, these properties are affected:<ul>
+     *      <li>{@link ISoundboxFile#name}</li>
+     *      <li>{@link ISoundboxFile#tags}</li>
+     *      <li>{@link ISound#voiceActivation}</li>
+     * </ul>
+     * @param file
+     * @return Promise that resolves with the complete, updated data from the server. Throws a {@link SoundboxError} on failure.
+     */
+    public edit<T extends ISoundboxFile>(file: T): Promise<T> {
+        return this.connection.invoke("Edit", this.flattenFile(file))
+            .catch(error => {
+                console.error("Could not edit a sound", error);
+                throw new SoundboxError({
+                    code: ResultStatusCode.CONNECTION_ERROR
+                });
+            })
+            .then((result: IFileResult) => {
+                if (!result.success)
+                    throw new SoundboxError(result.status);
+                return result.file as T;
+            });
+    }
+
     //#region Delete
 
     /**
@@ -980,9 +1006,10 @@ export class Soundbox {
     public delete(file: ISoundboxFileBase): Promise<void> {
         return this.connection.invoke("Delete", this.minimizeFile(file))
             .catch(error => {
+                console.error("Could not delete a sound", error);
                 throw new SoundboxError({
                     code: ResultStatusCode.CONNECTION_ERROR
-                })
+                });
             })
             .then((result: IServerResult) => {
                 if (!result.success)
@@ -1005,6 +1032,24 @@ export class Soundbox {
         return {
             id: file.id
         } as T;
+    }
+
+    /**
+     * Returns a copy of the given file that does not reference its parent or its children (for directories) anymore.
+     * This results in a minimized-ish version of the file that can be efficiently uploaded to edit files.
+     * @param file
+     */
+    protected flattenFile<T extends ISoundboxFile>(file: T): T {
+        let copy: T = {
+            ...file
+        };
+        //flatten:
+        delete copy.parentDirectory;
+        if (isDirectory(copy)) {
+            copy.children = [];
+        }
+
+        return copy;
     }
 
     //#endregion
