@@ -3,7 +3,7 @@
     /// <summary>
     /// Provides <see cref="IStreamAudioSource"/>s from <see cref="AudioDevice"/>s.
     /// </summary>
-    public interface IStreamAudioSourceProvider
+    public interface IDeviceStreamAudioSourceProvider
     {
         /// <summary>
         /// Returns a <see cref="IStreamAudioSource"/> that can read from the given <see cref="AudioDevice"/>.

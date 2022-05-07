@@ -367,7 +367,7 @@ namespace Soundbox.Speech.Recognition.Azure
             if (streamSource == null && configSource is AudioDevice audioDevice)
             {
                 //read from device
-                var provider = ServiceProvider.GetService(typeof(IStreamAudioSourceProvider)) as IStreamAudioSourceProvider;
+                var provider = ServiceProvider.GetService(typeof(IDeviceStreamAudioSourceProvider)) as IDeviceStreamAudioSourceProvider;
                 if (provider != null)
                 {
                     streamSource = provider.GetStreamAudioSource(audioDevice);

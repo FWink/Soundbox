@@ -6,7 +6,7 @@ namespace Soundbox.Audio.NAudio
     /// <summary>
     /// Factory for <see cref="IStreamAudioSource"/>s using the NAudio library.
     /// </summary>
-    public class NAudioStreamAudioSourceProvider : IStreamAudioSourceProvider
+    public class NAudioStreamAudioSourceProvider : IDeviceStreamAudioSourceProvider
     {
         protected IServiceProvider ServiceProvider;
         protected ILogger Logger;
