@@ -47,6 +47,8 @@ export class SoundboxMainPage implements OnInit {
         this.soundbox.setVolume(this.soundbox.getVolume() - 5);
     }
 
+    //#region Upload
+
     /**
      * Called when the user selects some files to upload them.
      * Allows the user to edit each sound before uploading them.
@@ -131,6 +133,52 @@ export class SoundboxMainPage implements OnInit {
         if (deleteIndex >= 0)
             this.newSoundsPending.splice(deleteIndex, 1);
     }
+
+    //#endregion
+
+    //#region Context menu
+
+    contextMenuActive: boolean;
+    contextMenuSound: ISound;
+    contextMenuX: number;
+    contextMenuY: number;
+
+    /**
+     * Opens a context menu on the given event's location, allowing the user to edit and delete the given sound.
+     * @param sound
+     * @param e
+     */
+    showSoundContextMenu(sound: ISound, e: MouseEvent) {
+
+        this.contextMenuActive = true;
+        this.contextMenuSound = sound;
+        this.contextMenuX = e.pageX;
+        this.contextMenuY = e.pageY;
+
+        e.stopPropagation();
+        e.preventDefault();
+    }
+
+    /**
+     * Hides any active sound context menu.
+     **/
+    hideSoundContextMenu() {
+        this.contextMenuActive = false;
+    }
+
+    //#endregion
+
+    //#region Delete
+
+    /**
+     * Deletes the given sound from the server. Our list of sounds will be updated automatically.
+     * @param sound
+     */
+    delete(sound: ISound) {
+        this.soundbox.delete(sound);
+    }
+
+    //#endregion
 }
 
 /**

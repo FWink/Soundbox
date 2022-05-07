@@ -1,5 +1,13 @@
 ﻿<div class="soundbox-sound-list">
-    <button type="button" *ngFor="let sound of soundbox.sounds | async" (click)="play(sound)">{{sound.name}}</button>
+    <button type="button" *ngFor="let sound of soundbox.sounds | async" (click)="play(sound)" (contextmenu)="showSoundContextMenu(sound, $event)">{{sound.name}}</button>
+</div>
+<div *ngIf="contextMenuActive">
+    <div class="soundbox-sound-context" [style.top.px]="contextMenuY" [style.left.px]="contextMenuX">
+        <div (click)="delete(contextMenuSound); hideSoundContextMenu();">
+            Delete
+        </div>
+    </div>
+    <div class="soundbox-sound-context-backdrop" (pointerdown)="hideSoundContextMenu()"></div>
 </div>
 <div>
     Pitch:

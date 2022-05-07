@@ -1,4 +1,8 @@
-﻿.soundbox-sound-list {
+﻿:host {
+    font-family: Helvetica, Arial, sans-serif;
+}
+
+.soundbox-sound-list {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     grid-auto-rows: minmax(150px, 1fr);
@@ -7,4 +11,39 @@
     * {
         word-break: break-word;
     }
+}
+
+.soundbox-sound-context {
+    position: absolute;
+    z-index: 101;
+
+    background: white;
+
+    border: 1.5px solid grey;
+
+    > * {
+        cursor: pointer;
+        min-width: 100px;
+        padding: 4px;
+
+        &:not(:last-child) {
+            border-bottom: 1.5px solid grey;
+        }
+
+        &:hover {
+            background: lightgrey;
+        }
+        &:active {
+            background: darkgrey;
+        }
+    }
+}
+
+.soundbox-sound-context-backdrop {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    bottom: 0px;
+    z-index: 100;
 }

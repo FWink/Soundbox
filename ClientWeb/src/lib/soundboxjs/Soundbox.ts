@@ -15,6 +15,7 @@ import { StorageProvider } from './StorageProvider';
 import { SoundsDatabase } from './SoundsDatabase';
 import { ISoundboxFileChangeEvent, ISoundboxFileMoveEvent, SoundboxFileChangeEventType } from './SoundboxFileChangeEvent';
 import { SoundboxConnectionState } from './SoundboxConnectionState';
+import { IServerResult } from './results/ServerResult';
 
 /**
  * Represents a Soundbox server with a two-way realtime communication channel (via SignalR).
@@ -963,6 +964,33 @@ export class Soundbox {
 
         return status;
     }
+
+    //#endregion
+
+    //#region Edit
+
+    //#region Delete
+
+    /**
+     * Deletes the given file (sound, directoy, macro...) from the server.
+     * Causes a DELETE event to be raised, for example via {@link sounds}
+     * @param file
+     * @returns Resolves when the file has been deleted successfully. Throws a {@link SoundboxError} on failure.
+     */
+    public delete(file: ISoundboxFileBase): Promise<void> {
+        return this.connection.invoke("Delete", this.minimizeFile(file))
+            .catch(error => {
+                throw new SoundboxError({
+                    code: ResultStatusCode.CONNECTION_ERROR
+                })
+            })
+            .then((result: IServerResult) => {
+                if (!result.success)
+                    throw new SoundboxError(result.status);
+            });
+    }
+
+    //#endregion
 
     //#endregion
 
