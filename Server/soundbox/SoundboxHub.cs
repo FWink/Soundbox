@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Soundbox
@@ -193,5 +194,26 @@ namespace Soundbox
         {
             return GetSoundbox().MakeDirectory(directory, parent);
         }
+
+        #region "Speech Recognition"
+
+        /// <summary>
+        /// Uploads an audio file. The audio file will be processed by the soundbox's speech detection (if installed)
+        /// and the recognized words and matched <paramref name="recognizables"/> will be streamed back.
+        /// </summary>
+        /// <param name="audio"></param>
+        /// <param name="audioMimeType"></param>
+        /// <param name="recognizables"></param>
+        /// <param name="phrases">
+        /// See <see cref="SoundboxVoiceActivation.SpeechPhrases"/>
+        /// </param>
+        /// <returns></returns>
+        public IAsyncEnumerable<Speech.Recognition.SpeechRecognitionTestResult> TestSpeechRecognition(byte[] audio, string audioMimeType, ICollection<Speech.Recognition.SpeechRecognitionTestRecognizable> recognizables, ICollection<string> phrases,
+            CancellationToken cancellationToken = default)
+        {
+            return GetSoundbox().SpeechRecognition_ClientTest(Audio.AudioBlob.FromStream(new System.IO.MemoryStream(audio), mimeType: audioMimeType), recognizables, phrases, cancellationToken);
+        }
+
+        #endregion
     }
 }

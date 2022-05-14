@@ -10,6 +10,8 @@ namespace Soundbox
     /// </summary>
     public class VolumeResultStatus : ResultStatus
     {
+        protected const ResultStatusSegment Segment = ResultStatusSegment.Volume;
+
         public static readonly VolumeResultStatus INVALID_VOLUME_MAX = new VolumeResultStatus(2400, $"Invalid volume. Max volume is {Constants.VOLUME_MAX}");
         public static readonly VolumeResultStatus INVALID_VOLUME_MIN = new VolumeResultStatus(2401, $"Invalid volume. Min volume is {Constants.VOLUME_MIN}");
 

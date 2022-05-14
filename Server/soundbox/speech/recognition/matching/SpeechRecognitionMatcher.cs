@@ -70,28 +70,30 @@ namespace Soundbox.Speech.Recognition
                 Recognizable = recognizable
             };
 
-            var words = SpeechRecognitionWordNormalization.GetWordsNormalized(newState.WordsRemaining, speechEvent.Language);
-            if (words.Count == 0)
+            var spokenNormalized = SpeechRecognitionWordNormalization.GetWordsNormalized(newState.WordsRemaining, speechEvent.Language);
+            var spokenWords = spokenNormalized.NormalizedWords;
+            if (spokenWords.Count == 0)
                 //nothing to match
                 return result;
 
             int iCandidate = -1;
-            foreach (var triggerWords in GetWordsNormalized(recognizable, speechEvent.Language))
+            foreach (var triggerNormalized in GetWordsNormalized(recognizable, speechEvent.Language))
             {
                 ++iCandidate;
+                var triggerWords = triggerNormalized.NormalizedWords;
                 if (triggerWords.Count == 0)
                     continue;
 
                 //check if triggerWords are included in words
-                for (int iWords = 0; iWords < words.Count; ++iWords)
+                for (int iWords = 0; iWords < spokenWords.Count; ++iWords)
                 {
-                    if (iWords + triggerWords.Count > words.Count)
+                    if (iWords + triggerWords.Count > spokenWords.Count)
                         break;
 
                     bool equals = true;
                     for (int iTrigger = 0; iTrigger < triggerWords.Count; ++iTrigger)
                     {
-                        if (words[iWords + iTrigger] != triggerWords[iTrigger])
+                        if (spokenWords[iWords + iTrigger] != triggerWords[iTrigger])
                         {
                             equals = false;
                             break;
@@ -104,6 +106,7 @@ namespace Soundbox.Speech.Recognition
                         Logger.LogTrace($"Result {speechEvent.ResultID}: Matched words '{recognizable.SpeechTriggers.ElementAt(iCandidate)}' in spoken '{speechEvent.Text}'[{newState.WordsUsedIndex}] ({speechEvent.Language})");
 
                         result.Success = true;
+                        result.WordsSpokenMatched = spokenNormalized.GetInputWords(iWords, iWords + triggerWords.Count);
                         newState.AddWordsUsed(iWords + triggerWords.Count);
                         return result;
                     }
@@ -142,7 +145,7 @@ namespace Soundbox.Speech.Recognition
         /// <param name="recognizable"></param>
         /// <param name="language"></param>
         /// <returns></returns>
-        protected IEnumerable<IList<string>> GetWordsNormalized(ISpeechRecognizable recognizable, string language)
+        protected IEnumerable<SpeechRecognitionNormalizedWords> GetWordsNormalized(ISpeechRecognizable recognizable, string language)
         {
             //TODO speech: cache this in the recognizable
             var triggers = recognizable.SpeechTriggers;
@@ -150,7 +153,7 @@ namespace Soundbox.Speech.Recognition
             {
                 return triggers.Select(sentence => SpeechRecognitionWordNormalization.GetWordsNormalized(SpeechRecognitionWordNormalization.ToWords(sentence, language), language));
             }
-            return new IList<string>[0];
+            return new SpeechRecognitionNormalizedWords[0];
         }
 
         #endregion

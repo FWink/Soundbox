@@ -7,6 +7,8 @@ namespace Soundbox
 {
     public class FileResultStatus : ResultStatus
     {
+        protected const ResultStatusSegment Segment = ResultStatusSegment.File;
+
         public static readonly FileResultStatus UPLOAD_ABORTED = new FileResultStatus(1000, "Upload aborted by user");
         public static readonly FileResultStatus INVALID_DISPLAY_NAME_EXISTS = new FileResultStatus(1400, "Display name already exists in that directory");
         public static readonly FileResultStatus ILLEGAL_FILE_TYPE = new FileResultStatus(1401, "File type is not supported");

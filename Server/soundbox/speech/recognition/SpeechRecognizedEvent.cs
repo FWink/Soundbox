@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 
 namespace Soundbox.Speech.Recognition
@@ -46,6 +47,7 @@ namespace Soundbox.Speech.Recognition
         /// <summary>
         /// <see cref="Text"/> split into individual words.
         /// </summary>
+        [JsonIgnore]
         public IList<string> Words => SpeechRecognitionWordNormalization.ToWords(Text, Language);
     }
 }

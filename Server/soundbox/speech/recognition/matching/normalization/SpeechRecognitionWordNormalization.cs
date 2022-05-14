@@ -13,6 +13,7 @@ namespace Soundbox.Speech.Recognition
     {
         #region "Normalization"
 
+        private static readonly Regex NormalizationGermanPrefixRegex = new Regex("^(ge)");
         private static readonly Regex NormalizationGermanSuffixRegex = new Regex("(e[snmr]?|s|t)$");
 
         /// <summary>
@@ -22,7 +23,7 @@ namespace Soundbox.Speech.Recognition
         /// <param name="words"></param>
         /// <param name="language"></param>
         /// <returns></returns>
-        public static IList<string> GetWordsNormalized(IEnumerable<string> words, string language)
+        public static SpeechRecognitionNormalizedWords GetWordsNormalized(IEnumerable<string> words, string language)
         {
             var culture = System.Globalization.CultureInfo.CurrentUICulture;
             if (language != null)
@@ -41,6 +42,7 @@ namespace Soundbox.Speech.Recognition
                 }
                 else if (german)
                 {
+                    wordNormalized = NormalizationGermanPrefixRegex.Replace(wordNormalized, "");
                     wordNormalized = NormalizationGermanSuffixRegex.Replace(wordNormalized, "");
                     wordNormalized = wordNormalized.Replace("ß", "ss");
                 }
@@ -48,7 +50,11 @@ namespace Soundbox.Speech.Recognition
                 normalized.Add(wordNormalized);
             }
 
-            return normalized;
+            return new SpeechRecognitionNormalizedWords()
+            {
+                InputWords = words as IList<string> ?? words.ToList(),
+                NormalizedWords = normalized
+            };
         }
 
         #endregion

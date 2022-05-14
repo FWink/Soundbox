@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Soundbox
@@ -1313,6 +1314,7 @@ namespace Soundbox
 
         #region "Speech Recognition"
 
+        protected ISpeechRecognitionServiceProvider speechProvider;
         protected ISpeechRecognitionService speechRecognizer;
 
         /// <summary>
@@ -1368,6 +1370,7 @@ namespace Soundbox
 
             var options = SpeechRecognition_GetOptions();
 
+            speechProvider = provider;
             speechRecognizer = recognizer;
             recognizer.Start(options);
         }
@@ -1405,6 +1408,98 @@ namespace Soundbox
                 speechRecognizer.UpdateOptions(SpeechRecognition_GetOptions());
             }
         }
+
+        #region "Client Test"
+
+        /// <summary>
+        /// Uploads an audio file. The audio file will be processed by the soundbox's speech detection (if installed)
+        /// and the recognized words and matched <paramref name="recognizables"/> will be streamed back.
+        /// </summary>
+        /// <param name="audio">
+        /// Should usually be a <see cref="Audio.AudioBlob"/> from an uploaded file.
+        /// </param>
+        /// <param name="recognizables"></param>
+        /// <param name="phrases">
+        /// See <see cref="SoundboxVoiceActivation.SpeechPhrases"/>
+        /// </param>
+        /// <returns></returns>
+        public IAsyncEnumerable<SpeechRecognitionTestResult> SpeechRecognition_ClientTest(Audio.IAudioSource audio, ICollection<SpeechRecognitionTestRecognizable> recognizables, ICollection<string> phrases,
+            CancellationToken cancellationToken = default)
+        {
+            var buffer = Channel.CreateUnbounded<SpeechRecognitionTestResult>();
+
+            RunSpeechRecognition();
+
+            return buffer.Reader.ReadAllAsync(cancellationToken);
+
+            async void RunSpeechRecognition()
+            {
+                var matcher = ServiceProvider.GetService(typeof(SpeechRecognitionMatcher)) as SpeechRecognitionMatcher;
+                if (speechProvider == null || matcher == null)
+                {
+                    //not installed
+                    await buffer.Writer.WriteAsync(new SpeechRecognitionTestResult(SpeechRecognitionTestResultStatus.NOT_AVAILABLE));
+                    buffer.Writer.Complete();
+                    return;
+                }
+
+                var config = new SpeechRecognitionConfig()
+                {
+                    AudioSource = audio
+                };
+
+                var speechRecognizer = speechProvider.GetSpeechRecognizer(config);
+                if (speechRecognizer == null)
+                {
+                    //audio is not supported
+                    await buffer.Writer.WriteAsync(new SpeechRecognitionTestResult(SpeechRecognitionTestResultStatus.INVALID_AUDIO_TYPE));
+                    buffer.Writer.Complete();
+                    return;
+                }
+
+                //register on speech events and feed the output
+                speechRecognizer.Recognized += async (s, e) =>
+                {
+                    //perform a matching and return the result
+                    var match = matcher.Match(e, recognizables);
+                    await buffer.Writer.WriteAsync(new SpeechRecognitionTestResult(BaseResultStatus.OK, e, match, false));
+                };
+
+                speechRecognizer.Stopped += async (s, e) =>
+                {
+                    ResultStatus status = BaseResultStatus.OK;
+                    if (e.Exception != null)
+                    {
+                        status = BaseResultStatus.INTERNAL_SERVER_ERROR;
+                    };
+
+                    await buffer.Writer.WriteAsync(new SpeechRecognitionTestResult(status, null, null, true));
+
+                    //all done: clean up
+                    buffer.Writer.Complete();
+                    speechRecognizer.Dispose();
+                };
+
+                //start the recognition
+                var options = new SpeechRecognitionOptions()
+                {
+                    //use the same languages here as we do for the background recognition.
+                    //if we were using a user-provided language here, the user might get misleading results
+                    Languages = AppSettings.SpeechRecognition.Languages,
+                    Phrases = FilterUploadVoiceActivationStrings(phrases)
+                };
+
+                await speechRecognizer.Start(options);
+
+                //stop recognizing when requested
+                cancellationToken.Register(async () =>
+                {
+                    await speechRecognizer.Stop();
+                });
+            };
+        }
+
+        #endregion
 
         #endregion
 
