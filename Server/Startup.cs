@@ -119,6 +119,7 @@ namespace Soundbox
             services.AddTransient<Speech.Recognition.ISpeechRecognitionServiceProvider, Speech.Recognition.Azure.AzureSpeechRecognitionServiceProvider>();
             services.AddTransient<Speech.Recognition.Azure.AzureSpeechRecognitionService>();
             services.AddTransient<Speech.Recognition.SpeechRecognizedEvent>();
+            services.AddTransient<Speech.Recognition.SpeechRecognitionMatcher>();
 
             services.AddControllers().AddNewtonsoftJson();
         }

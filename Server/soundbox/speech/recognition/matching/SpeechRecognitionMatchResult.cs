@@ -2,11 +2,6 @@
 {
     public class SpeechRecognitionMatchResult
     {
-        /// <summary>
-        /// See <see cref="SpeechRecognizedEvent.Match(ISpeechRecognizable, SpeechRecognitionMatchState)"/>
-        /// </summary>
-        public SpeechRecognitionMatchState State { get; set; }
-
         public ISpeechRecognizable Recognizable { get; set; }
 
         /// <summary>

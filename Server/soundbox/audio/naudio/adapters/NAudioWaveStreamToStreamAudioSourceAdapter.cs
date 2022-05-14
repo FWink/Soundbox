@@ -60,10 +60,7 @@ namespace Soundbox.Audio.NAudio
                 }
                 catch (OperationCanceledException)
                 {
-                    Stopped?.Invoke(this, new StreamAudioSourceStoppedEvent()
-                    {
-                        Cause = StreamAudioSourceStoppedCause.Stopped
-                    });
+                    //stopped
                 }
                 catch (Exception ex)
                 {
@@ -74,6 +71,11 @@ namespace Soundbox.Audio.NAudio
                     });
                     throw;
                 }
+
+                Stopped?.Invoke(this, new StreamAudioSourceStoppedEvent()
+                {
+                    Cause = StreamAudioSourceStoppedCause.Stopped
+                });
             });
 
             return Task.CompletedTask;

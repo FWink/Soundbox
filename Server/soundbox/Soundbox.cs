@@ -1280,7 +1280,6 @@ namespace Soundbox
         #region "Speech Recognition"
 
         protected ISpeechRecognitionService speechRecognizer;
-        protected SpeechRecognitionMatchState speechRecognitionState;
 
         /// <summary>
         /// Called on application start to create an instance of <see cref="ISpeechRecognitionService"/> if enabled in the current configuration.
@@ -1306,15 +1305,18 @@ namespace Soundbox
             };
 
             var recognizer = provider.GetSpeechRecognizer(config);
-            if (recognizer == null)
+            var matcher = ServiceProvider.GetService(typeof(SpeechRecognitionMatcher)) as SpeechRecognitionMatcher;
+            if (recognizer == null || matcher == null)
+            {
                 //no speech recognizer is installed for the current config
+                recognizer?.Dispose();
                 return;
+            }
 
             recognizer.Recognized += (sender, e) =>
             {
                 //try and match the spoken words
-                var match = e.Match(NodesCache.Values.Where(node => node is Sound).Cast<Sound>(), speechRecognitionState);
-                speechRecognitionState = match.State;
+                var match = matcher.Match(e, NodesCache.Values.Where(node => node is Sound).Cast<Sound>());
                 if (match.Success)
                 {
                     Play(new User(), new SoundPlaybackRequest()
