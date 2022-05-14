@@ -46,6 +46,6 @@ namespace Soundbox.Speech.Recognition
         /// <summary>
         /// <see cref="Text"/> split into individual words.
         /// </summary>
-        public IList<string> Words => SpeechRecognitionMatcher.ToWords(Text, Language);
+        public IList<string> Words => SpeechRecognitionWordNormalization.ToWords(Text, Language);
     }
 }

@@ -382,7 +382,7 @@ namespace Soundbox
             soundClean.Name = sound.Name;
             soundClean.FileName = sound.FileName;
             soundClean.Tags = sound.Tags;
-            soundClean.VoiceActivation = sound.VoiceActivation;
+            soundClean.VoiceActivation = FilterUploadVoiceActivationSettings(sound.VoiceActivation);
             soundClean.ParentDirectory = directory;
 
             sound = soundClean;
@@ -570,6 +570,40 @@ namespace Soundbox
         }
 
         /// <summary>
+        /// Performs some simple error checking on the given voice activation settings: filters empty or double phrases and keywords.
+        /// </summary>
+        /// <param name="voiceActivation"></param>
+        /// <returns></returns>
+        protected SoundboxVoiceActivation FilterUploadVoiceActivationSettings(SoundboxVoiceActivation voiceActivation)
+        {
+            if (voiceActivation == null)
+                return null;
+            voiceActivation.SpeechTriggers = FilterUploadVoiceActivationStrings(voiceActivation.SpeechTriggers);
+            voiceActivation.SpeechPhrases = FilterUploadVoiceActivationStrings(voiceActivation.SpeechPhrases);
+
+            if (voiceActivation.SpeechTriggers.Count == 0)
+                return null;
+            return voiceActivation;
+        }
+
+        /// <summary>
+        /// Processes either <see cref="SoundboxVoiceActivation.SpeechTriggers"/> or <see cref="SoundboxVoiceActivation.SpeechPhrases"/>
+        /// for <see cref="FilterUploadVoiceActivationSettings(SoundboxVoiceActivation)"/>: filters empty or double strings.
+        /// </summary>
+        /// <param name="strings"></param>
+        /// <returns></returns>
+        protected ICollection<string> FilterUploadVoiceActivationStrings(ICollection<string> strings)
+        {
+            if (strings == null)
+                return new List<string>();
+            return strings
+                .Where(str => str != null)
+                .Select(str => str.Trim())
+                .Where(str => str.Length > 0)
+                .ToHashSet();
+        }
+
+        /// <summary>
         /// Returns the name of a temporary file for the upload of a new sound.
         /// </summary>
         /// <returns></returns>
@@ -710,7 +744,7 @@ namespace Soundbox
                 
                 if (localFile is ISoundboxPlayable localPlayable && file is ISoundboxPlayable playable)
                 {
-                    localPlayable.VoiceActivation = playable.VoiceActivation;
+                    localPlayable.VoiceActivation = FilterUploadVoiceActivationSettings(playable.VoiceActivation);
                 }
 
                 //modify in database

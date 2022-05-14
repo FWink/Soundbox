@@ -1,8 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace Soundbox.Speech.Recognition
 {
@@ -72,7 +70,7 @@ namespace Soundbox.Speech.Recognition
                 Recognizable = recognizable
             };
 
-            var words = GetWordsNormalized(newState.WordsRemaining, speechEvent.Language);
+            var words = SpeechRecognitionWordNormalization.GetWordsNormalized(newState.WordsRemaining, speechEvent.Language);
             if (words.Count == 0)
                 //nothing to match
                 return result;
@@ -144,69 +142,17 @@ namespace Soundbox.Speech.Recognition
         /// <param name="recognizable"></param>
         /// <param name="language"></param>
         /// <returns></returns>
-        public static IEnumerable<IList<string>> GetWordsNormalized(ISpeechRecognizable recognizable, string language)
+        protected IEnumerable<IList<string>> GetWordsNormalized(ISpeechRecognizable recognizable, string language)
         {
             //TODO speech: cache this in the recognizable
             var triggers = recognizable.SpeechTriggers;
             if (triggers?.Count > 0)
             {
-                return triggers.Select(sentence => GetWordsNormalized(ToWords(sentence, language), language));
+                return triggers.Select(sentence => SpeechRecognitionWordNormalization.GetWordsNormalized(SpeechRecognitionWordNormalization.ToWords(sentence, language), language));
             }
             return new IList<string>[0];
         }
 
-        protected static readonly Regex NormalizationGermanSuffixRegex = new Regex("(e[snmr]?|s)$");
-
-        /// <summary>
-        /// Normalizes the given words for matching.
-        /// May or may not take the given language into account (e.g., in German language, this may remove suffixes from words to make them comparable when used in different contexts).
-        /// </summary>
-        /// <param name="words"></param>
-        /// <param name="language"></param>
-        /// <returns></returns>
-        public static IList<string> GetWordsNormalized(IEnumerable<string> words, string language)
-        {
-            var culture = System.Globalization.CultureInfo.CurrentUICulture;
-            if (language != null)
-                culture = System.Globalization.CultureInfo.GetCultureInfo(language);
-            bool english = language != null && language.StartsWith("en");
-            bool german = language != null && language.StartsWith("de");
-
-            var normalized = new List<string>();
-            foreach (var word in words)
-            {
-                var wordNormalized = word.ToLower(culture);
-
-                if (english)
-                {
-                    wordNormalized = wordNormalized.Replace("'s", "s").Replace("'re", "r");
-                }
-                else if (german)
-                {
-                    wordNormalized = NormalizationGermanSuffixRegex.Replace(wordNormalized, "");
-                    wordNormalized = wordNormalized.Replace("ß", "ss");
-                }
-
-                normalized.Add(wordNormalized);
-            }
-
-            return normalized;
-        }
-
         #endregion
-
-        private static readonly Regex PunctuationRegex = new Regex("[.\\-_?!]");
-
-        /// <summary>
-        /// Turns the given sentence into separate words and removes punctuations.
-        /// </summary>
-        /// <param name="sentence"></param>
-        /// <param name="language"></param>
-        /// <returns></returns>
-        public static IList<string> ToWords(string sentence, string language)
-        {
-            string cleaned = PunctuationRegex.Replace(sentence, " ");
-            return cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        }
     }
 }
