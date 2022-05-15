@@ -1,6 +1,7 @@
 ﻿using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using Microsoft.Extensions.Logging;
+using Nito.AsyncEx;
 using Soundbox.Audio;
 using Soundbox.Audio.Processing;
 using Soundbox.Audio.Processing.Noisegate;
@@ -50,6 +51,12 @@ namespace Soundbox.Speech.Recognition.Azure
         #endregion
 
         /// <summary>
+        /// Lock used for the public <see cref="Start(SpeechRecognitionOptions)"/>, <see cref="Stop"/> and <see cref="UpdateOptions(SpeechRecognitionOptions)"/>
+        /// methods (not recursive!)
+        /// </summary>
+        protected readonly AsyncLock Lock = new AsyncLock();
+
+        /// <summary>
         /// True: recognition is currently active.
         /// </summary>
         protected bool IsRunning;
@@ -63,6 +70,10 @@ namespace Soundbox.Speech.Recognition.Azure
         /// Optional: if <see cref="SpeechRecognizer"/> is fed from this, then we need to <see cref="IStreamAudioSource.Start"/> and <see cref="IStreamAudioSource.Stop"/> this as required.
         /// </summary>
         protected IStreamAudioSource StreamAudioSource;
+        /// <summary>
+        /// True: <see cref="StreamAudioSource"/> should be running right now.
+        /// </summary>
+        protected bool StreamAudioRunning;
         /// <summary>
         /// Optional: noise gate for <see cref="StreamAudioSource"/>. We call <see cref="INoiseGateStreamAudioProcessor.OnAudioStop"/> when the speech recognizer detects a speech-stopped event.
         /// Does not need to be disposed explicitly.
@@ -98,7 +109,21 @@ namespace Soundbox.Speech.Recognition.Azure
 
         public async Task Start(SpeechRecognitionOptions options)
         {
+            using (await Lock.LockAsync())
+            {
+                await StartInt(options);
+            }
+        }
+
+        /// <summary>
+        /// Implements <see cref="Start(SpeechRecognitionOptions)"/>. Must hold <see cref="Lock"/>
+        /// </summary>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        protected async Task StartInt(SpeechRecognitionOptions options)
+        {
             SpeechRecognizer recognizer = null;
+            ICollection<IDisposable> disposables = new List<IDisposable>();
 
             try
             {
@@ -131,6 +156,7 @@ namespace Soundbox.Speech.Recognition.Azure
                 }).ToArray());
 
                 recognizer = new SpeechRecognizer(speechConfig, languageConfig, AudioConfig);
+                disposables.Add(recognizer);
 
                 //set up the special phrases if any
                 if (options.Phrases?.Count > 0)
@@ -145,8 +171,7 @@ namespace Soundbox.Speech.Recognition.Azure
                 //prepare events
                 recognizer.Canceled += (sender, e) =>
                 {
-                    SpeechRecognizer = null;
-                    Dispose(Disposables);
+                    Dispose(ref disposables);
 
                     if (e.ErrorCode == CancellationErrorCode.Forbidden || e.ErrorCode == CancellationErrorCode.AuthenticationFailure)
                     {
@@ -188,8 +213,11 @@ namespace Soundbox.Speech.Recognition.Azure
                 await recognizer.StartContinuousRecognitionAsync();
 
                 //start our audio source
-                if (!IsRunning && StreamAudioSource != null)
+                if (StreamAudioSource != null && !StreamAudioRunning)
+                {
                     await StreamAudioSource.Start();
+                    StreamAudioRunning = true;
+                }
             }
             catch (Exception e)
             {
@@ -202,16 +230,19 @@ namespace Soundbox.Speech.Recognition.Azure
             SpeechRecognizer = recognizer;
             IsRunning = true;
 
-            Disposables.Add(recognizer);
+            this.Disposables = disposables;
         }
 
-        public Task Stop()
+        public async Task Stop()
         {
-            return StopInt(true);
+            using (await Lock.LockAsync())
+            {
+                await StopInt(true);
+            }
         }
 
         /// <summary>
-        /// Implements <see cref="Stop"/>
+        /// Implements <see cref="Stop"/>. Must hold <see cref="Lock"/>
         /// </summary>
         /// <param name="withEvent">
         /// False: <see cref="Stopped"/> is not triggered.
@@ -219,8 +250,11 @@ namespace Soundbox.Speech.Recognition.Azure
         /// <returns></returns>
         protected async Task StopInt(bool withEvent)
         {
-            if (IsRunning && StreamAudioSource != null)
+            if (StreamAudioSource != null && StreamAudioRunning)
+            {
                 await StreamAudioSource.Stop();
+                StreamAudioRunning = false;
+            }
 
             var recognizer = SpeechRecognizer;
             if (recognizer != null)
@@ -231,8 +265,7 @@ namespace Soundbox.Speech.Recognition.Azure
                 await recognizer.StopContinuousRecognitionAsync();
 
                 IsRunning = false;
-                SpeechRecognizer = null;
-                Dispose(Disposables);
+                Dispose(ref Disposables);
 
                 if (withEvent)
                 {
@@ -243,29 +276,32 @@ namespace Soundbox.Speech.Recognition.Azure
 
         public async Task UpdateOptions(SpeechRecognitionOptions options)
         {
-            if (!IsRunning)
+            using (await Lock.LockAsync())
             {
-                //nothing to do
-                return;
-            }
-
-            Logger.LogInformation("UpdateOptions");
-
-            try
-            {
-                await StopInt(false);
-                await Start(options);
-            }
-            catch (Exception e)
-            {
-                //could not restart
-                Logger.LogError(e, "Could not restart recognition from UpdateOptions");
-
-                Stopped?.Invoke(this, new SpeechRecognitionStoppedEvent()
+                if (!IsRunning)
                 {
-                    Exception = e
-                });
-                return;
+                    //nothing to do
+                    return;
+                }
+
+                Logger.LogInformation("UpdateOptions");
+
+                try
+                {
+                    await StopInt(false);
+                    await StartInt(options);
+                }
+                catch (Exception e)
+                {
+                    //could not restart
+                    Logger.LogError(e, "Could not restart recognition from UpdateOptions");
+
+                    Stopped?.Invoke(this, new SpeechRecognitionStoppedEvent()
+                    {
+                        Exception = e
+                    });
+                    return;
+                }
             }
         }
 
@@ -330,7 +366,7 @@ namespace Soundbox.Speech.Recognition.Azure
                     };
                     streamSource.Stopped += (s, e) =>
                     {
-                        if (e.Cause == StreamAudioSourceStoppedCause.Stopped)
+                        if (e.Cause == StreamAudioSourceStoppedCause.End)
                         {
                             //signal end-of-stream to Azure
                             azureInput.Close();
@@ -496,18 +532,20 @@ namespace Soundbox.Speech.Recognition.Azure
         /// Disposes of the given disposables and clears the given list.
         /// </summary>
         /// <param name="disposables"></param>
-        protected void Dispose(ICollection<IDisposable> disposables)
+        protected void Dispose(ref ICollection<IDisposable> disposables)
         {
             foreach (var disposable in disposables)
             {
+                if (Object.ReferenceEquals(disposable, SpeechRecognizer))
+                    SpeechRecognizer = null;
                 disposable.Dispose();
             }
-            disposables.Clear();
+            disposables = new List<IDisposable>();
         }
 
         public void Dispose()
         {
-            Dispose(Disposables);
+            Dispose(ref Disposables);
             AudioConfig?.Dispose();
             StreamAudioSource?.Dispose();
         }
