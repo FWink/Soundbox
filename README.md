@@ -61,8 +61,6 @@ Upload a sound and play it. You will the hear sound being played on your machine
 
 To get that sound into TeamSpeak you should take a look at the the [introduction](#wait-what)
 
-*Note*: on Windows playing .mp3 and .flac doesn't work yet when running on IIS Express (i.e. running or debugging from within Visual Studio)
-
 # Other VoIP clients
 
 So far it's been all about TeamSpeak as that is my usual VoIP client of choice.

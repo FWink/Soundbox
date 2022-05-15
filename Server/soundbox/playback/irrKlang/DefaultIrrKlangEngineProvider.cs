@@ -18,14 +18,17 @@ namespace Soundbox.Playback.IrrKlang
             this.Preferences = preferences;
 
             //add our BIN directory to our local path: need to load MP3 and flac plugins
+            //not entirely sure why both SetEnvironmentVariable and LoadPlugins are required. doesn't work in debug mode without LoadPlugins
             string path = System.Reflection.Assembly.GetEntryAssembly().Location;
             path = new Regex(@"[^\\]+$").Replace(path, "");
+            string pluginPath = path;
 
             path = System.Environment.GetEnvironmentVariable("Path") + ";" + path;
             System.Environment.SetEnvironmentVariable("Path", path);
 
             //start the sound engine
             Engine = new ISoundEngine();
+            Engine.LoadPlugins(pluginPath);
         }
 
         public async Task<ISoundEngine> GetSoundEngine()
