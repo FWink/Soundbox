@@ -1096,26 +1096,30 @@ namespace Soundbox
                     return;
 
                 //update the sounds the player is currently playing
-                lock (PlaybackLock)
+                //we do that asynchronously to avoid possible locking issues with our PlaybackLock and any lock the playback service maybe using (chance of deadlock otherwise)
+                Threading.Tasks.FireAndForget(() =>
                 {
-                    PlaybackContext playerContext;
-                    if(!PlayersPlaying.TryGetValue(player, out playerContext))
+                    lock (PlaybackLock)
                     {
-                        //race condition, finished already?
-                        return;
-                    }
+                        PlaybackContext playerContext;
+                        if(!PlayersPlaying.TryGetValue(player, out playerContext))
+                        {
+                            //race condition, finished already?
+                            return;
+                        }
 
-                    if (args.Finished)
-                    {
-                        PlayersPlaying.Remove(player);
-                    }
-                    else
-                    {
-                        playerContext.PlayingNow = args.SoundsPlaying;
-                    }
+                        if (args.Finished)
+                        {
+                            PlayersPlaying.Remove(player);
+                        }
+                        else
+                        {
+                            playerContext.PlayingNow = args.SoundsPlaying;
+                        }
 
-                    FirePlaybackChanged();
-                }
+                        FirePlaybackChanged();
+                    }
+                });
             };
 
             var context = new PlaybackContext(user, request, player);

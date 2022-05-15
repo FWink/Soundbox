@@ -58,7 +58,7 @@ namespace Soundbox.Threading
 
         /// <summary>
         /// Asynchronously executes the given function and catches and logs errors.
-        /// Used when you aren't interested in the task's result.
+        /// Used when you aren't interested in the task's result or simply need to run something in a different task/thread.
         /// </summary>
         /// <param name="func"></param>
         public static void FireAndForget(Func<Task> func)
