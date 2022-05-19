@@ -16,6 +16,9 @@ import { SoundsDatabase } from './SoundsDatabase';
 import { ISoundboxFileChangeEvent, ISoundboxFileMoveEvent, SoundboxFileChangeEventType } from './SoundboxFileChangeEvent';
 import { SoundboxConnectionState } from './SoundboxConnectionState';
 import { IServerResult } from './results/ServerResult';
+import { ISpeechRecognitionTestRecognizable } from './speech/recognition/SpeechRecognitionTestRecognizable';
+import { ISoundboxPlayable } from './SoundboxPlayable';
+import { SpeechRecognitionTestResult } from './results/SpeechRecognitionTestResult';
 
 /**
  * Represents a Soundbox server with a two-way realtime communication channel (via SignalR).
@@ -1018,6 +1021,81 @@ export class Soundbox {
     }
 
     //#endregion
+
+    //#endregion
+
+    //#region Speech recognition
+
+    /**
+     * Uploads some recorded audio and runs it through the soundbox's speech recognition. People can be hard to understand and speech recognition
+     * isn't always an exact science. Thus, this can help the user to get a feeling for how the speech recognition works:
+     * they can record some audio with their microphone, upload it, and they'll get the exact text output of the speech recognizer along with feedback
+     * if their entered triggers have been detected successfully.
+     * @param audio Audio blob. Either a file selected from disk or audio recorded via {@link MediaRecorder}. Should ideally be of type "audio/webm; codecs=opus"
+     * @param recognizables List of recognizables: Each contains a list of "triggers". The soundbox will match the transcribed text against these triggers and will then return
+     *          the matching recognizable in the result events.
+     * @param phrases List of special phrases that are probably hard to detect for the speech recognition. See also {@link ISoundboxVoiceActivation#speechPhrases}
+     */
+    public testSpeechRecognition(audio: Blob, recognizables?: ISound[] | ISpeechRecognitionTestRecognizable[], phrases?: ISoundboxPlayable[] | string[]): Observable<SpeechRecognitionTestResult> {
+        let subject = new Subject<SpeechRecognitionTestResult>();
+
+        //convert parameters
+        let paramRecognizables: ISpeechRecognitionTestRecognizable[] = [];
+        let paramPhrases: string[] = [];
+
+        if (recognizables?.length) {
+            let test = recognizables[0];
+            if ((test as ISound).voiceActivation) {
+                //is a list of sounds
+                for (let sound of recognizables as ISound[]) {
+                    if (!sound?.voiceActivation?.speechTriggers?.length)
+                        continue;
+
+                    paramRecognizables.push({
+                        id: sound.id,
+                        speechTriggers: sound.voiceActivation.speechTriggers
+                    });
+                }
+            }
+            else {
+                //is a list of recognizables
+                paramRecognizables = recognizables as ISpeechRecognitionTestRecognizable[];
+            }
+        }
+
+        if (phrases?.length) {
+            let test = phrases[0];
+            if (test instanceof String) {
+                //plain strings
+                paramPhrases = phrases as string[];
+            }
+            else {
+                //playables (probably sounds)
+                for (let playable of phrases as ISoundboxPlayable[]) {
+                    if (!playable?.voiceActivation?.speechPhrases?.length)
+                        continue;
+
+                    paramPhrases.push(...playable.voiceActivation.speechPhrases);
+                }
+            }
+        }
+
+        //read the audio blob and upload as base64 (not exactly efficient, but good enough for short clips)
+        let reader = new FileReader();
+
+        reader.onload = () => {
+            let base64 = (reader.result as string).split(",", 2)[1];
+
+            this.connection.stream("TestSpeechRecognition", base64, audio.type, paramRecognizables, paramPhrases).subscribe({
+                next: value => subject.next(value),
+                complete: () => subject.complete(),
+                error: err => subject.error(err)
+            });
+        };
+        reader.readAsDataURL(audio);
+
+        return subject;
+    }
 
     //#endregion
 

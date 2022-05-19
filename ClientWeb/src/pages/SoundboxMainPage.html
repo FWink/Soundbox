@@ -98,4 +98,11 @@
             </td>
         </tr>
     </table>
+    Test speech recognition:
+    <div>
+        <button type="button" (click)="recordSpeechRecognitionTestAudio()" [disabled]="speechRecognitionRecordingRunning || speechRecognitionRecordingPending">⏺ Record your microphone</button>
+        <button type="button" (click)="stopSpeechRecognitionTestAudioRecording()" [disabled]="!speechRecognitionRecordingRunning">⏹</button>
+        <button type="button" (click)="uploadSpeechRecognitionTestAudio()" [disabled]="!speechRecognitionRecordedAudio">Upload recorded audio</button>
+        <audio *ngIf="speechRecognitionRecordedAudioSrc" [src]="sanitizer.bypassSecurityTrustResourceUrl(speechRecognitionRecordedAudioSrc)" controls></audio>
+    </div>
 </div>

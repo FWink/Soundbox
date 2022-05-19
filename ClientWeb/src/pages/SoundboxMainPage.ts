@@ -1,13 +1,16 @@
-﻿import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit, NgZone } from '@angular/core';
 import { Soundbox } from '../lib/soundboxjs/Soundbox';
 import { ISound } from '../lib/soundboxjs/Sound';
 import { IUploadStatus, IUploadProgress } from '../lib/soundboxjs/UploadStatus';
+import { DomSanitizer } from '@angular/platform-browser';
 
 @Component({
     templateUrl: 'SoundboxMainPage.html',
     styleUrls: ['SoundboxMainPage.scss']
 })
 export class SoundboxMainPage implements OnInit {
+
+    sanitizer: DomSanitizer;
 
     soundbox: Soundbox;
 
@@ -22,8 +25,9 @@ export class SoundboxMainPage implements OnInit {
 
     editSounds: EditSound[] = [];
 
-    constructor(soundbox: Soundbox) {
+    constructor(soundbox: Soundbox, sanitizer: DomSanitizer, protected zone: NgZone) {
         this.soundbox = soundbox;
+        this.sanitizer = sanitizer;
     }
 
     ngOnInit(): void {
@@ -243,6 +247,73 @@ export class SoundboxMainPage implements OnInit {
         this.soundbox.edit(editSound).then(() => {
             this.stopEdit(sound);
         });
+    }
+
+    //#endregion
+
+    //#region Speech recognition test
+
+    speechRecognitionRecordingPending: boolean;
+    speechRecognitionRecordingRunning: boolean;
+    speechRecognitionRecorder: MediaRecorder;
+    speechRecognitionRecordingChunks: Blob[];
+
+    speechRecognitionRecordedAudio: Blob;
+    speechRecognitionRecordedAudioSrc: string;
+
+
+    /**
+     * Starts recording audio with the user's microphone and asks for permission first as required.
+     */
+    recordSpeechRecognitionTestAudio() {
+        this.speechRecognitionRecordingPending = true;
+
+        navigator.mediaDevices.getUserMedia({
+            audio: true
+        })
+        .then(stream => {
+            let recorder = new MediaRecorder(stream, {
+                //mimeType: "audio/webm; codecs=opus"
+                mimeType: "audio/ogg; codecs=opus"
+            });
+
+            recorder.ondataavailable = event => {
+                this.speechRecognitionRecordingChunks.push(event.data);
+            };
+
+            recorder.onstop = () => {
+                this.zone.run(() => {
+                    this.speechRecognitionRecordingRunning = false;
+                    this.speechRecognitionRecordedAudio = new Blob(this.speechRecognitionRecordingChunks, this.speechRecognitionRecordingChunks[0]);
+                    this.speechRecognitionRecordedAudioSrc = URL.createObjectURL(this.speechRecognitionRecordedAudio);
+
+                    for (let track of stream.getTracks()) {
+                        track.stop();
+                    }
+                });
+            };
+
+            this.speechRecognitionRecordingRunning = true;
+            this.speechRecognitionRecorder = recorder;
+            this.speechRecognitionRecordingChunks = [];
+            this.speechRecognitionRecordedAudio = null;
+            this.speechRecognitionRecordedAudioSrc = null;
+            recorder.start();
+        })
+        .finally(() => {
+            this.speechRecognitionRecordingPending = false;
+        });
+    }
+
+    /**
+     * Stops the test recording started via {@link #recordSpeechRecognitionTestAudio}
+     */
+    stopSpeechRecognitionTestAudioRecording() {
+        this.speechRecognitionRecorder.stop();
+    }
+
+    uploadSpeechRecognitionTestAudio() {
+        this.soundbox.testSpeechRecognition(this.speechRecognitionRecordedAudio).subscribe(console.log);
     }
 
     //#endregion

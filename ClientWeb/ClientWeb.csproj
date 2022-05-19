@@ -107,6 +107,7 @@
     <TypeScriptCompile Include="src\lib\soundboxjs\results\ResultStatus.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\results\ResultStatusCode.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\results\ServerResult.ts" />
+    <TypeScriptCompile Include="src\lib\soundboxjs\results\SpeechRecognitionTestResult.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\ServerSettings.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\Sound.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\Soundbox.ts" />
@@ -119,6 +120,10 @@
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundMetaData.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundPlaybackRequest.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\SoundsDatabase.ts" />
+    <TypeScriptCompile Include="src\lib\soundboxjs\speech\recognition\SpeechRecognitionMatchResult.ts" />
+    <TypeScriptCompile Include="src\lib\soundboxjs\speech\recognition\SpeechRecognitionTestRecognizable.ts" />
+    <TypeScriptCompile Include="src\lib\soundboxjs\speech\recognition\SpeechRecognizable.ts" />
+    <TypeScriptCompile Include="src\lib\soundboxjs\speech\recognition\SpeechRecognizedEvent.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\StorageProvider.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\Upload.ts" />
     <TypeScriptCompile Include="src\lib\soundboxjs\UploadStatus.ts" />
