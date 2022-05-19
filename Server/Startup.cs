@@ -36,7 +36,10 @@ namespace Soundbox
             });
 
             services.AddCors(); 
-            services.AddSignalR().AddNewtonsoftJsonProtocol();
+            services.AddSignalR(options =>
+            {
+                options.MaximumReceiveMessageSize = 500000;
+            }).AddNewtonsoftJsonProtocol();
 
 
             bool isWindows = System.Environment.OSVersion.Platform == PlatformID.Win32NT;
@@ -99,16 +102,21 @@ namespace Soundbox
 
             //audio processing
             services.AddTransient<Audio.IStreamAudioSourceProvider, Audio.DefaultStreamAudioSourceProvider>();
+            services.AddTransient<Audio.IBlobStreamAudioSourceProvider, Audio.DefaultBlobStreamAudioSourceProvider>();
 
             //NAudio
             services.AddTransient<Audio.IDeviceStreamAudioSourceProvider, Audio.NAudio.NAudioDeviceStreamAudioSourceProvider>();
             services.AddTransient<Audio.Processing.IStreamAudioResamplerProvider, Audio.NAudio.NAudioStreamAudioResamplerProvider>();
-            services.AddTransient<Audio.IBlobStreamAudioSourceProvider, Audio.NAudio.NAudioBlobStreamAudioSourceProvider>();
+            services.AddTransient<Audio.NAudio.NAudioBlobStreamAudioSourceProvider>();
             if (isWindows)
             {
                 services.AddTransient<Audio.NAudio.NAudioWasapiStreamAudioSource>();
                 services.AddTransient<Audio.NAudio.NAudioMediaFoundationStreamAudioResampler>();
             }
+
+            //Ogg/Opus processing
+            services.AddTransient<Audio.Concentus.ConcentusOggOpusStreamAudioSource>();
+            services.AddTransient<Audio.Matroska.MatroskaOpusReader>();
 
             //effects
             services.AddTransient<Audio.Processing.Noisegate.INoiseGateStreamAudioProcessProvider, Audio.Processing.Noisegate.Implementation.DefaultNoiseGateStreamAudioProcessProvider>();

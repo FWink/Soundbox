@@ -32,30 +32,55 @@ namespace Soundbox.Audio
             else
             {
                 //try to guess from MimeType
-                switch (mimeType)
+                this.Format = new StreamAudioFormat(StreamAudioFormatType.Unknown);
+
+                if (mimeType == "audio/wav" ||
+                    mimeType == "audio/x-wav" ||
+                    mimeType == "audio/wave")
                 {
-                    case "audio/wav":
-                    case "audio/x-wav":
-                    case "audio/wave":
-                        this.Format = new StreamAudioFormat(StreamAudioFormatType.Wave);
-                        break;
-                    case "audio/mpeg":
-                    case "audio/mp3":
-                        this.Format = new StreamAudioFormat(StreamAudioFormatType.Mp3);
-                        break;
-                    case "audio/ogg":
-                    case "audio/vorbis":
-                        this.Format = new StreamAudioFormat(StreamAudioFormatType.Vorbis);
-                        break;
-                    case "audio/opus":
-                        this.Format = new StreamAudioFormat(StreamAudioFormatType.Opus);
-                        break;
-                    case "audio/aac":
-                        this.Format = new StreamAudioFormat(StreamAudioFormatType.Aac);
-                        break;
-                    default:
-                        this.Format = new StreamAudioFormat(StreamAudioFormatType.Unknown);
-                        break;
+                    this.Format = new StreamAudioFormat(StreamAudioFormatType.Wave);
+                }
+                else if (mimeType == "audio/mpeg" ||
+                    mimeType == "audio/mp3")
+                {
+                    this.Format = new StreamAudioFormat(StreamAudioFormatType.Mp3);
+                }
+                else if (mimeType == "audio/opus")
+                {
+                    this.Format = new StreamAudioFormat(StreamAudioFormatType.Opus);
+                }
+                else if (mimeType == "audio/vorbis")
+                {
+                    this.Format = new StreamAudioFormat(StreamAudioFormatType.Vorbis);
+                }
+                else if (mimeType == "audio/aac")
+                {
+                    this.Format = new StreamAudioFormat(StreamAudioFormatType.Aac);
+                }
+                else if (mimeType.StartsWith("audio/ogg"))
+                {
+                    //ogg container format
+                    if (mimeType.Contains("codecs=vorbis"))
+                    {
+                        this.Format = new ContaineredStreamAudioFormat(ContainerFormatType.Ogg, new StreamAudioFormat(StreamAudioFormatType.Vorbis));
+                    }
+                    else
+                    {
+                        //assume opus
+                        this.Format = new ContaineredStreamAudioFormat(ContainerFormatType.Ogg, new StreamAudioFormat(StreamAudioFormatType.Opus));
+                    }
+                }
+                else if (mimeType.StartsWith("audio/webm"))
+                {
+                    //webm container format
+                    if (mimeType.Contains("codecs=opus"))
+                    {
+                        this.Format = new ContaineredStreamAudioFormat(ContainerFormatType.Webm, new StreamAudioFormat(StreamAudioFormatType.Opus));
+                    }
+                    else if (mimeType.Contains("codecs=vorbis"))
+                    {
+                        this.Format = new ContaineredStreamAudioFormat(ContainerFormatType.Webm, new StreamAudioFormat(StreamAudioFormatType.Vorbis));
+                    }
                 }
             }
         }

@@ -6,7 +6,6 @@ namespace Soundbox.Audio.NAudio
     /// <summary>
     /// Uses the NAudio library to decode blob audio streams of these formats:<list type="bullet">
     /// <item><see cref="StreamAudioFormatType.Wave"/></item>
-    /// <item><see cref="StreamAudioFormatType.Vorbis"/></item>
     /// </list>
     /// </summary>
     public class NAudioBlobStreamAudioSourceProvider : IBlobStreamAudioSourceProvider
@@ -28,13 +27,18 @@ namespace Soundbox.Audio.NAudio
 
             WaveStream waveStream = null;
 
+
+            if (blob.Format is ContaineredStreamAudioFormat containered)
+            {
+                //if (containered.ContainerFormat == ContainerFormatType.Ogg && containered.AudioFormat.Type == StreamAudioFormatType.Vorbis)
+                //{
+                //    waveStream = new global::NAudio.Vorbis.VorbisWaveReader(blob.Stream);
+                //}
+            }
             switch (blob.Format.Type)
             {
                 case StreamAudioFormatType.Wave:
                     waveStream = new WaveFileReader(blob.Stream);
-                    break;
-                case StreamAudioFormatType.Vorbis:
-                    waveStream = new global::NAudio.Vorbis.VorbisWaveReader(blob.Stream);
                     break;
             }
 

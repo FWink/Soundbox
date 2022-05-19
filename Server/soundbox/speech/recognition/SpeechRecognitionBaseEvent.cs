@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ namespace Soundbox.Speech.Recognition
         /// <summary>
         /// Timestamp at which the event had been generated.
         /// </summary>
+        [JsonIgnore]
         public long TimestampMillis { get; set; } = Environment.TickCount;
     }
 }
