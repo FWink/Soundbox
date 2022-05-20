@@ -18,10 +18,10 @@ namespace Soundbox.Audio.Concentus
 
         protected AudioBlob AudioInput;
 
-        /// <summary>
-        /// Used to extract an Ogg/Opus stream from an Mkv or webm stream.
-        /// </summary>
-        protected Matroska.MatroskaOpusReader MkvReader;
+        ///// <summary>
+        ///// Used to extract an Ogg/Opus stream from an Mkv or webm stream.
+        ///// </summary>
+        //protected Matroska.MatroskaOpusReader MkvReader;
 
         /// <summary>
         /// Used to stop the task started in <see cref="Start"/>.
@@ -45,17 +45,18 @@ namespace Soundbox.Audio.Concentus
         {
             if (audioInput.Format is ContaineredStreamAudioFormat containered)
             {
-                if (containered.ContainerFormat == ContainerFormatType.Mkv || containered.ContainerFormat == ContainerFormatType.Webm)
-                {
-                    //need to convert first
-                    var mkvReader = ServiceProvider.GetService(typeof(Matroska.MatroskaOpusReader)) as Matroska.MatroskaOpusReader;
-                    if (mkvReader == null)
-                    {
-                        throw new ArgumentException($"AudioBlob is of container type {containered.ContainerFormat} but no Matroska reader is available");
-                    }
-                    this.MkvReader = mkvReader;
-                }
-                else if (containered.ContainerFormat != ContainerFormatType.Ogg)
+                //if (containered.ContainerFormat == ContainerFormatType.Mkv || containered.ContainerFormat == ContainerFormatType.Webm)
+                //{
+                //    //need to convert first
+                //    var mkvReader = ServiceProvider.GetService(typeof(Matroska.MatroskaOpusReader)) as Matroska.MatroskaOpusReader;
+                //    if (mkvReader == null)
+                //    {
+                //        throw new ArgumentException($"AudioBlob is of container type {containered.ContainerFormat} but no Matroska reader is available");
+                //    }
+                //    this.MkvReader = mkvReader;
+                //}
+                //else
+                if (containered.ContainerFormat != ContainerFormatType.Ogg)
                 {
                     throw new ArgumentException($"AudioBlob is of unexpected container type {containered.ContainerFormat}");
                 }
@@ -95,11 +96,11 @@ namespace Soundbox.Audio.Concentus
             {
                 AudioBlob audio = AudioInput;
 
-                if (MkvReader != null)
-                {
-                    //convert first
-                    audio = MkvReader.ReadOggOpus(audio);
-                }
+                //if (MkvReader != null)
+                //{
+                //    //convert first
+                //    audio = MkvReader.ReadOggOpus(audio);
+                //}
 
                 if (token.IsCancellationRequested)
                 {

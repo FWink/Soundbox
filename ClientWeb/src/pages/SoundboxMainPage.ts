@@ -3,6 +3,8 @@ import { Soundbox } from '../lib/soundboxjs/Soundbox';
 import { ISound } from '../lib/soundboxjs/Sound';
 import { IUploadStatus, IUploadProgress } from '../lib/soundboxjs/UploadStatus';
 import { DomSanitizer } from '@angular/platform-browser';
+// @ts-ignore
+import OpusMediaRecorder from 'opus-media-recorder/OpusMediaRecorder.umd.js';
 
 @Component({
     templateUrl: 'SoundboxMainPage.html',
@@ -272,10 +274,27 @@ export class SoundboxMainPage implements OnInit {
             audio: true
         })
         .then(stream => {
-            let recorder = new MediaRecorder(stream, {
-                //mimeType: "audio/webm; codecs=opus"
-                mimeType: "audio/ogg; codecs=opus"
-            });
+            let mimeTypeOggOpus = "audio/ogg; codecs=opus";
+
+            let recorderOptions: MediaRecorderOptions = {
+                mimeType: mimeTypeOggOpus
+            };
+
+            let recorder: MediaRecorder;
+            if (recorderOptions.mimeType == mimeTypeOggOpus && !MediaRecorder.isTypeSupported(mimeTypeOggOpus)) {
+                //use the OpusMediaRecorder lib
+                let opusBasePath = "scripts/opus-media-recorder/";
+                let workerOptions = {
+                    encoderWorkerFactory: () => new Worker(opusBasePath + "encoderWorker.umd.js"),
+                    OggOpusEncoderWasmPath: 'OggOpusEncoder.wasm',
+                    WebMOpusEncoderWasmPath: 'WebMOpusEncoder.wasm'
+                };
+
+                recorder = new OpusMediaRecorder(stream, recorderOptions, workerOptions);
+            }
+            else {
+                recorder = new MediaRecorder(stream, recorderOptions);
+            }
 
             recorder.ondataavailable = event => {
                 this.speechRecognitionRecordingChunks.push(event.data);

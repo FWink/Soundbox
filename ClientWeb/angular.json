@@ -25,7 +25,17 @@
             "aot": true,
             "assets": [
               "src/favicon.ico",
-              "src/assets"
+              "src/assets",
+              {
+                "glob": "*.wasm",
+                "input": "./node_modules/opus-media-recorder",
+                "output": "/scripts/opus-media-recorder/"
+              },
+              {
+                "glob": "encoderWorker.umd.js",
+                "input": "./node_modules/opus-media-recorder",
+                "output": "/scripts/opus-media-recorder/"
+              }
             ],
             "styles": [
               "src/styles.scss"

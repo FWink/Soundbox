@@ -116,7 +116,6 @@ namespace Soundbox
 
             //Ogg/Opus processing
             services.AddTransient<Audio.Concentus.ConcentusOggOpusStreamAudioSource>();
-            services.AddTransient<Audio.Matroska.MatroskaOpusReader>();
 
             //effects
             services.AddTransient<Audio.Processing.Noisegate.INoiseGateStreamAudioProcessProvider, Audio.Processing.Noisegate.Implementation.DefaultNoiseGateStreamAudioProcessProvider>();
