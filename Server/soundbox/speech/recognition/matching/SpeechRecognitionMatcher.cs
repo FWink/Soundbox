@@ -63,7 +63,6 @@ namespace Soundbox.Speech.Recognition
             //=> probably check on a change in language and remove words that were already included in the previous state
 
             var newState = GetMatchState(speechEvent);
-            this.State = newState;
 
             var result = new SpeechRecognitionMatchResult()
             {
@@ -108,6 +107,7 @@ namespace Soundbox.Speech.Recognition
                         result.Success = true;
                         result.WordsSpokenMatched = spokenNormalized.GetInputWords(iWords, iWords + triggerWords.Count);
                         newState.AddWordsUsed(iWords + triggerWords.Count);
+                        this.State = newState;
                         return result;
                     }
                 }

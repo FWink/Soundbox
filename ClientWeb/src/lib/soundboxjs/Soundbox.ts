@@ -1045,7 +1045,7 @@ export class Soundbox {
 
         if (recognizables?.length) {
             let test = recognizables[0];
-            if ((test as ISound).voiceActivation) {
+            if (!(test as ISpeechRecognitionTestRecognizable).speechTriggers) {
                 //is a list of sounds
                 for (let sound of recognizables as ISound[]) {
                     if (!sound?.voiceActivation?.speechTriggers?.length)

@@ -1,6 +1,9 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Soundbox.AppSettings;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -9,7 +12,8 @@ namespace Soundbox.Test
 {
     public class SoundboxTestWrapper : Soundbox
     {
-        public SoundboxTestWrapper(IServiceProvider serviceProvider, IHubContext<SoundboxHub, ISoundboxClient> hubContext, ISoundboxConfigProvider config, IDatabaseProvider database) : base(serviceProvider, hubContext, config, database, null)
+        public SoundboxTestWrapper(IServiceProvider serviceProvider, IHubContext<SoundboxHub, ISoundboxClient> hubContext, ISoundboxConfigProvider config, IDatabaseProvider database, ILogger<Soundbox> logger, IOptions<SoundboxAppSettings> appSettings) :
+            base(serviceProvider, hubContext, config, database, null, logger, appSettings)
         {
         }
 

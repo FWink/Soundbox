@@ -32,6 +32,25 @@ namespace Soundbox.Test
                 return null;
             if (serviceType.Equals(typeof(IDatabaseProvider)))
                 return null;
+            if (typeof(Microsoft.Extensions.Logging.ILogger).IsAssignableFrom(serviceType))
+            {
+                if (serviceType.IsGenericType)
+                {
+                    //ILogger<T>
+                    Type loggerType = typeof(Microsoft.Extensions.Logging.Abstractions.NullLogger<>);
+                    Type genericLogerType = loggerType.MakeGenericType(serviceType.GetGenericArguments());
+                    return genericLogerType.GetConstructor(Type.EmptyTypes).Invoke(null);
+                }
+                else
+                {
+                    return Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
+                }
+            }
+            if (serviceType.IsGenericType && serviceType.GetGenericTypeDefinition().Equals(typeof(Microsoft.Extensions.Options.IOptions<>)))
+            {
+                //use a default value
+                return typeof(TestOptions<>).MakeGenericType(serviceType.GetGenericArguments()).GetConstructor(Type.EmptyTypes).Invoke(null);
+            }
 
             return BuildService(serviceType);
         }
