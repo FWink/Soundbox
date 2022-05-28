@@ -173,6 +173,9 @@ namespace Soundbox.Speech.Recognition.Azure
                 {
                     Dispose(ref disposables);
 
+                    bool restart = false;
+                    bool log = true;
+
                     if (e.ErrorCode == CancellationErrorCode.Forbidden || e.ErrorCode == CancellationErrorCode.AuthenticationFailure)
                     {
                         //out of quota (or invalid key, try the next one anyway)
@@ -180,15 +183,31 @@ namespace Soundbox.Speech.Recognition.Azure
                         if (NextCredentials())
                         {
                             Logger.LogInformation($"Out of quota for credentials {credentialsIndexCurrent}. Restarting with {CredentialsIndex}");
-
-                            Threading.Tasks.FireAndForget(() => Start(options));
-                            return;
+                            restart = true;
+                            log = false;
                         }
                     }
-
-                    if (e.Reason != CancellationReason.EndOfStream && e.Reason != CancellationReason.CancelledByUser)
+                    else if (e.ErrorCode == CancellationErrorCode.ServiceTimeout)
                     {
-                        Logger.LogWarning($"Recognition stopped. reason={e.Reason}, erroCode={e.ErrorCode}, details={e.ErrorDetails}");
+                        //timeout, probably due to inactivity
+                        restart = true;
+                    }
+                    //TODO speech errors ConnectionFailure and ServiceUnavailable => exponential backoff
+
+                    if (e.Reason == CancellationReason.EndOfStream || e.Reason == CancellationReason.CancelledByUser)
+                    {
+                        log = false;
+                    }
+
+                    if (log)
+                    {
+                        Logger.LogWarning($"Recognition stopped. reason={e.Reason}, erroCode={e.ErrorCode}, details={e.ErrorDetails}, restarting={restart}");
+                    }
+
+                    if (restart)
+                    {
+                        Threading.Tasks.FireAndForget(() => Start(options));
+                        return;
                     }
 
                     Stopped?.Invoke(this, new SpeechRecognitionStoppedEvent()
