@@ -102,10 +102,6 @@
     align-items: center;
 }
 
-.soundbox-dialog-close {
-    float: right;
-}
-
 .soundbox-speech-test {
     display: flex;
     flex-direction: column;
@@ -124,10 +120,6 @@
     }
 }
 
-.soundbox-speech-test-status {
-    float: left;
-}
-
 .soundbox-speech-test-error {
     color: red;
     font-weight: bold;
@@ -136,4 +128,31 @@
 .soundbox-speech-test-word-success {
     color: lightgreen;
     font-weight: bold;
+}
+
+@media (orientation: landscape) {
+
+    .soundbox-speech-test-head {
+        position: relative;
+    }
+
+    .soundbox-speech-test-status {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+    }
+
+    .soundbox-dialog-close {
+        position: absolute;
+        top: 0px;
+        right: 0px;
+    }
+}
+
+@media (orientation: portrait) {
+
+    .soundbox-speech-test-head {
+        display: flex;
+        justify-content: space-between;
+    }
 }

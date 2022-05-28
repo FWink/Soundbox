@@ -115,11 +115,13 @@
 </div>
 <div *ngIf="speechRecognitionShow" class="soundbox-dialog-backdrop">
     <div class="soundbox-dialog-full">
-        <button type="button" class="soundbox-dialog-close" (click)="speechRecognitionShow = false">❌</button>
-        <div class="soundbox-speech-test-status">
-            <span *ngIf="speechRecognitionRunning">Test is running...</span>
-            <span *ngIf="!speechRecognitionRunning && speechRecognitionError">❗</span>
-            <span *ngIf="!speechRecognitionRunning && !speechRecognitionError">✔</span>
+        <div class="soundbox-speech-test-head">
+            <div class="soundbox-speech-test-status">
+                <span *ngIf="speechRecognitionRunning">Test is running...</span>
+                <span *ngIf="!speechRecognitionRunning && speechRecognitionError">❗</span>
+                <span *ngIf="!speechRecognitionRunning && !speechRecognitionError">✔</span>
+            </div>
+            <button type="button" class="soundbox-dialog-close" (click)="speechRecognitionShow = false">❌</button>
         </div>
         <div class="soundbox-speech-test">
             <table>
