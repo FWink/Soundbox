@@ -14,7 +14,7 @@ namespace Soundbox.Speech.Recognition
         #region "Normalization"
 
         private static readonly Regex NormalizationGermanPrefixRegex = new Regex("^(ge)");
-        private static readonly Regex NormalizationGermanSuffixRegex = new Regex("(e[snmr]?|s|t)$");
+        private static readonly Regex NormalizationGermanSuffixRegex = new Regex("(e[smr]?|s|t|e?n)$");
 
         /// <summary>
         /// Normalizes the given words for matching.
@@ -38,7 +38,7 @@ namespace Soundbox.Speech.Recognition
 
                 if (english)
                 {
-                    wordNormalized = wordNormalized.Replace("'s", "s").Replace("'re", "r");
+                    wordNormalized = wordNormalized.Replace("'s", "s").Replace("'re", "r").Replace("'m", "m");
                 }
                 else if (german)
                 {

@@ -5,6 +5,8 @@ import { IUploadStatus, IUploadProgress } from '../lib/soundboxjs/UploadStatus';
 import { DomSanitizer } from '@angular/platform-browser';
 // @ts-ignore
 import OpusMediaRecorder from 'opus-media-recorder/OpusMediaRecorder.umd.js';
+import { ISpeechRecognitionTestRecognizable } from '../lib/soundboxjs/speech/recognition/SpeechRecognitionTestRecognizable';
+import { SpeechRecognitionTestResult } from '../lib/soundboxjs/results/SpeechRecognitionTestResult';
 
 @Component({
     templateUrl: 'SoundboxMainPage.html',
@@ -255,6 +257,8 @@ export class SoundboxMainPage implements OnInit {
 
     //#region Speech recognition test
 
+    speechRecognitionrecordingPossible: boolean = !!navigator.mediaDevices;
+
     speechRecognitionRecordingPending: boolean;
     speechRecognitionRecordingRunning: boolean;
     speechRecognitionRecorder: MediaRecorder;
@@ -263,6 +267,10 @@ export class SoundboxMainPage implements OnInit {
     speechRecognitionRecordedAudio: Blob;
     speechRecognitionRecordedAudioSrc: string;
 
+    speechRecognitionShow: boolean;
+    speechRecognitionRunning: boolean;
+    speechRecognitionResults: SpeechRecognitionTestEvent[];
+    speechRecognitionError: string;
 
     /**
      * Starts recording audio with the user's microphone and asks for permission first as required.
@@ -332,7 +340,54 @@ export class SoundboxMainPage implements OnInit {
     }
 
     uploadSpeechRecognitionTestAudio() {
-        this.soundbox.testSpeechRecognition(this.speechRecognitionRecordedAudio).subscribe(console.log);
+        let recognizables = this.getSpeechRecognitionTestRecognizables();
+        //make a list of phrases
+        let phrases: string[] = [];
+        for (let recognizable of recognizables) {
+            phrases.push(...recognizable.sound.getSpeechPhrases());
+        }
+
+        let results: SpeechRecognitionTestEvent[] = [];
+
+        this.speechRecognitionShow = true;
+        this.speechRecognitionRunning = true;
+        this.speechRecognitionResults = results;
+        this.speechRecognitionError = null;
+
+        let subscription = this.soundbox.testSpeechRecognition(this.speechRecognitionRecordedAudio, recognizables, phrases).subscribe(result => {
+
+            if (!this.speechRecognitionShow) {
+                subscription?.unsubscribe();
+                return;
+            }
+
+            if (!result.success) {
+                this.speechRecognitionError = result.status.message;
+            }
+
+            if (result.end) {
+                this.speechRecognitionRunning = false;
+            }
+
+            if (!result.speechEvent) {
+                return;
+            }
+
+            results.push(new SpeechRecognitionTestEvent(result, recognizables));
+        });
+    }
+
+    /**
+     * Returns a list of test recognizables from the current "edit" and "upload" sound inputs.
+     */
+    getSpeechRecognitionTestRecognizables(): TestRecognizable[] {
+        let recognizables: TestRecognizable[] = [];
+
+        for (let sound of this.editSounds.concat(this.newSoundsPending)) {
+            recognizables.push(new TestRecognizable(sound));
+        }
+
+        return recognizables;
     }
 
     //#endregion
@@ -410,5 +465,96 @@ class NewSound extends EditSound {
         name = name.replace(/\s{2,}/g, " ");
 
         return name;
+    }
+}
+
+class TestRecognizable implements ISpeechRecognitionTestRecognizable {
+    public id: string;
+    public speechTriggers: string[];
+
+    public sound: EditSound;
+
+    constructor(sound: EditSound) {
+        this.sound = sound;
+
+        if (sound.sound) {
+            this.id = sound.sound.id;
+        }
+        else {
+            this.id = Math.random().toString() + sound.name;
+        }
+        this.speechTriggers = sound.getSpeechTriggers();
+    }
+}
+
+class SpeechRecognitionTestEvent {
+    public serverResult: SpeechRecognitionTestResult;
+
+    /**
+     * Name of a sound that has been recognized with this event.
+     */
+    public recognized: string;
+
+    public words: SpeechRecognitionTestEventWord[] = [];
+
+    constructor(serverResult: SpeechRecognitionTestResult, recognizables: TestRecognizable[]) {
+        this.serverResult = serverResult;
+
+        if (serverResult.matchResult?.success) {
+            for (let recognizable of recognizables) {
+                if (serverResult.matchResult.recognizable.id == recognizable.id) {
+                    this.recognized = recognizable.sound.name;
+                    break;
+                }
+            }
+        }
+
+        //split the recognized text into words
+        let words = serverResult.speechEvent.text.split(/\s+/);
+
+        //check which sequence of words caused a match
+
+        //remove non-word characters
+        let cleanWords = words.map(word => word.replace(/[.\\-_?!]/, ""));
+        let wordsRecognized = words.map(word => false);
+
+        if (serverResult.matchResult?.success) {
+            //compare word sequences
+            for (let iWord = 0; iWord < cleanWords.length; ++iWord) {
+                for (let iMatched = 0; iMatched < serverResult.matchResult.wordsSpokenMatched.length; ++iMatched) {
+                    if (iWord + iMatched >= cleanWords.length) {
+                        break;
+                    }
+
+                    if (cleanWords[iWord + iMatched] != serverResult.matchResult.wordsSpokenMatched[iMatched]) {
+                        break;
+                    }
+
+                    if (iMatched == serverResult.matchResult.wordsSpokenMatched.length - 1) {
+                        //sequence matches
+                        for (let iRecognized = iWord; iRecognized <= iWord + iMatched; ++iRecognized) {
+                            wordsRecognized[iRecognized] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        for (let i = 0; i < words.length; ++i) {
+            this.words.push(new SpeechRecognitionTestEventWord(words[i], wordsRecognized[i]));
+        }
+    }
+
+
+}
+
+class SpeechRecognitionTestEventWord {
+    public text: string;
+
+    public recognized: boolean;
+
+    constructor(text: string, recognized: boolean) {
+        this.text = text;
+        this.recognized = recognized;
     }
 }

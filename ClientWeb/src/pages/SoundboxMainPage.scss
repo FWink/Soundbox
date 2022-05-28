@@ -2,8 +2,10 @@
     font-family: Helvetica, Arial, sans-serif;
 }
 
-:host > :not(:first-child) {
-    margin-top: 8px;
+:host, .soundbox-section {
+    > :not(:first-child) {
+        margin-top: 8px;
+    }
 }
 
 .soundbox-sound-list {
@@ -50,8 +52,88 @@
     right: 0px;
     bottom: 0px;
     z-index: 100;
+    margin: 0px !important;
 }
 
 .soundbox-edit-name, .soundbox-edit-speech-triggers {
     min-width: 300px;
+}
+
+.soundbox-controls {
+    > :not(:first-child) {
+        margin-left: 4px;
+    }
+}
+
+.soundbox-section {
+    margin-top: 16px !important;
+
+    .soundbox-section {
+        margin-top: 8px !important;
+    }
+}
+
+.soundbox-section-edit {
+    @extend .soundbox-section;
+
+    border: 1px solid grey;
+    padding: 4px;
+}
+
+.soundbox-dialog {
+    background: white;
+    border: 1.5px solid grey;
+    padding: 16px;
+    z-index: 101;
+}
+
+.soundbox-dialog-full {
+    @extend .soundbox-dialog;
+    width: 90vw;
+    height: 90vh;
+}
+
+.soundbox-dialog-backdrop {
+    @extend .soundbox-sound-context-backdrop;
+    background-color: rgba(0,0,0,0.5);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.soundbox-dialog-close {
+    float: right;
+}
+
+.soundbox-speech-test {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    height: 100%;
+    overflow-y: auto;
+
+    td, th {
+        &:not(:first-child) {
+            padding-left: 16px;
+        }
+    }
+    tr > td {
+        padding-top: 6px;
+    }
+}
+
+.soundbox-speech-test-status {
+    float: left;
+}
+
+.soundbox-speech-test-error {
+    color: red;
+    font-weight: bold;
+}
+
+.soundbox-speech-test-word-success {
+    color: lightgreen;
+    font-weight: bold;
 }

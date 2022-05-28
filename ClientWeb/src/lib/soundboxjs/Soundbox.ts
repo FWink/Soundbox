@@ -19,6 +19,7 @@ import { IServerResult } from './results/ServerResult';
 import { ISpeechRecognitionTestRecognizable } from './speech/recognition/SpeechRecognitionTestRecognizable';
 import { ISoundboxPlayable } from './SoundboxPlayable';
 import { SpeechRecognitionTestResult } from './results/SpeechRecognitionTestResult';
+import { isString } from 'util';
 
 /**
  * Represents a Soundbox server with a two-way realtime communication channel (via SignalR).
@@ -1031,7 +1032,7 @@ export class Soundbox {
      * isn't always an exact science. Thus, this can help the user to get a feeling for how the speech recognition works:
      * they can record some audio with their microphone, upload it, and they'll get the exact text output of the speech recognizer along with feedback
      * if their entered triggers have been detected successfully.
-     * @param audio Audio blob. Either a file selected from disk or audio recorded via {@link MediaRecorder}. Currently, only "audio/webm; codecs=opus" is supported (.ogg files)
+     * @param audio Audio blob. Either a file selected from disk or audio recorded via {@link MediaRecorder}. Currently, only "audio/ogg; codecs=opus" is supported (.ogg files)
      * @param recognizables List of recognizables: Each contains a list of "triggers". The soundbox will match the transcribed text against these triggers and will then return
      *          the matching recognizable in the result events.
      * @param phrases List of special phrases that are probably hard to detect for the speech recognition. See also {@link ISoundboxVoiceActivation#speechPhrases}
@@ -1059,13 +1060,22 @@ export class Soundbox {
             }
             else {
                 //is a list of recognizables
-                paramRecognizables = recognizables as ISpeechRecognitionTestRecognizable[];
+                //flatten
+                for (let recognizable of recognizables as ISpeechRecognitionTestRecognizable[]) {
+                    if (!recognizable.speechTriggers?.length)
+                        continue;
+
+                    paramRecognizables.push({
+                        id: recognizable.id,
+                        speechTriggers: recognizable.speechTriggers
+                    });
+                }
             }
         }
 
         if (phrases?.length) {
             let test = phrases[0];
-            if (test instanceof String) {
+            if (isString(test)) {
                 //plain strings
                 paramPhrases = phrases as string[];
             }

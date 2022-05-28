@@ -16,6 +16,7 @@
     Pitch:
     <input type="range" min="50" max="300" [(ngModel)]="pitch" />
     {{pitch}}
+    <button type="button" (click)="pitch=100">100</button>
 </div>
 <div>
     <button type="button" (click)="soundbox.stop()">Stop</button>
@@ -29,8 +30,19 @@
     Playback:
     <div *ngFor="let playback of soundbox.playingNow | async">{{playback.sound.name}}</div>
 </div>
-<div>
-    Upload:
+<div *ngIf="(editSounds.length || newSoundsPending.length) && speechRecognitionrecordingPossible" class="soundbox-section-edit">
+    <span>Test speech recognition:</span>
+    <div class="soundbox-section">
+        <div class="soundbox-controls">
+            <button type="button" (click)="recordSpeechRecognitionTestAudio()" [disabled]="speechRecognitionRecordingRunning || speechRecognitionRecordingPending">⏺ Record your microphone</button>
+            <button type="button" (click)="stopSpeechRecognitionTestAudioRecording()" [disabled]="!speechRecognitionRecordingRunning">⏹</button>
+            <button type="button" (click)="uploadSpeechRecognitionTestAudio()" [disabled]="!speechRecognitionRecordedAudio || speechRecognitionShow">Upload recorded audio</button>
+        </div>
+        <audio *ngIf="speechRecognitionRecordedAudioSrc" [src]="sanitizer.bypassSecurityTrustResourceUrl(speechRecognitionRecordedAudioSrc)" controls></audio>
+    </div>
+</div>
+<div class="soundbox-section-edit">
+    <span>Upload:</span>
     <div>
         <input type="file" accept="audio/*" multiple (change)="onFilesSelected($event.target.files)" />
     </div>
@@ -71,38 +83,68 @@
         </tr>
     </table>
 </div>
-<button type="button" (click)="startEditAll()">Edit all sounds</button>
-<div *ngIf="editSounds.length">
-    Edit:
-    <table>
-        <tr>
-            <th>Sound name</th>
-            <th>Speech: trigger (separate with ; )</th>
-            <th>Speech: special words (separate with ; )</th>
-        </tr>
-        <tr *ngFor="let sound of editSounds">
-            <td>
-                <input type="text" [(ngModel)]="sound.name" class="soundbox-edit-name" />
-            </td>
-            <td>
-                <input type="text" [(ngModel)]="sound.speechTriggers" class="soundbox-edit-speech-triggers" />
-            </td>
-            <td>
-                <input type="text" [(ngModel)]="sound.speechPhrases" />
-            </td>
-            <td>
-                <button type="button" (click)="edit(sound)">Done</button>
-            </td>
-            <td>
-                <button type="button" (click)="stopEdit(sound)">Cancel</button>
-            </td>
-        </tr>
-    </table>
-    Test speech recognition:
-    <div>
-        <button type="button" (click)="recordSpeechRecognitionTestAudio()" [disabled]="speechRecognitionRecordingRunning || speechRecognitionRecordingPending">⏺ Record your microphone</button>
-        <button type="button" (click)="stopSpeechRecognitionTestAudioRecording()" [disabled]="!speechRecognitionRecordingRunning">⏹</button>
-        <button type="button" (click)="uploadSpeechRecognitionTestAudio()" [disabled]="!speechRecognitionRecordedAudio">Upload recorded audio</button>
-        <audio *ngIf="speechRecognitionRecordedAudioSrc" [src]="sanitizer.bypassSecurityTrustResourceUrl(speechRecognitionRecordedAudioSrc)" controls></audio>
+<div class="soundbox-section">
+    <button type="button" (click)="startEditAll()">Edit all sounds</button>
+    <div *ngIf="editSounds.length" class="soundbox-section-edit">
+        <span>Edit:</span>
+        <table>
+            <tr>
+                <th>Sound name</th>
+                <th>Speech: trigger (separate with ; )</th>
+                <th>Speech: special words (separate with ; )</th>
+            </tr>
+            <tr *ngFor="let sound of editSounds">
+                <td>
+                    <input type="text" [(ngModel)]="sound.name" class="soundbox-edit-name" />
+                </td>
+                <td>
+                    <input type="text" [(ngModel)]="sound.speechTriggers" class="soundbox-edit-speech-triggers" />
+                </td>
+                <td>
+                    <input type="text" [(ngModel)]="sound.speechPhrases" />
+                </td>
+                <td>
+                    <button type="button" (click)="edit(sound)">Save</button>
+                </td>
+                <td>
+                    <button type="button" (click)="stopEdit(sound)">Cancel</button>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+<div *ngIf="speechRecognitionShow" class="soundbox-dialog-backdrop">
+    <div class="soundbox-dialog-full">
+        <button type="button" class="soundbox-dialog-close" (click)="speechRecognitionShow = false">❌</button>
+        <div class="soundbox-speech-test-status">
+            <span *ngIf="speechRecognitionRunning">Test is running...</span>
+            <span *ngIf="!speechRecognitionRunning && speechRecognitionError">❗</span>
+            <span *ngIf="!speechRecognitionRunning && !speechRecognitionError">✔</span>
+        </div>
+        <div class="soundbox-speech-test">
+            <table>
+                <tr>
+                    <th>
+                        Spoken text
+                    </th>
+                    <th>
+                        Recognized sound name
+                    </th>
+                </tr>
+                <tr *ngFor="let event of speechRecognitionResults">
+                    <td>
+                        <span *ngFor="let word of event.words" [class.soundbox-speech-test-word-success]="word.recognized">
+                            {{ word.text }}
+                        </span>
+                    </td>
+                    <td>
+                        {{ event.recognized }}
+                    </td>
+                </tr>
+            </table>
+            <span *ngIf="speechRecognitionError" class="soundbox-speech-test-error">
+                An error occurred: {{ speechRecognitionError }}
+            </span>
+        </div>
     </div>
 </div>
