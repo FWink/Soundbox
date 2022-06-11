@@ -124,6 +124,12 @@ namespace Soundbox.Speech.Recognition
         /// <returns></returns>
         protected SpeechRecognitionMatchState GetMatchState(SpeechRecognizedEvent speechEvent)
         {
+            if (State != null && ReferenceEquals(State.Event, speechEvent))
+            {
+                //same event as last call. this has probably been called in a loop to get all matches => continue using the previous state as is
+                return State;
+            }
+
             SpeechRecognitionMatchState newState = new SpeechRecognitionMatchState()
             {
                 Event = speechEvent
