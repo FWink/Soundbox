@@ -20,7 +20,7 @@ namespace Soundbox.Audio
         /// Starts recording, thus causing <see cref="DataAvailable"/> to start raising events.
         /// </summary>
         /// <returns>
-        /// Task completes once recording has started (e.g., after initializing the hardware as finished).
+        /// Task completes once recording has started (e.g., after initializing the hardware has finished).
         /// </returns>
         Task Start();
 

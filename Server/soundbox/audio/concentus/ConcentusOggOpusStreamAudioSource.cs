@@ -9,6 +9,10 @@ namespace Soundbox.Audio.Concentus
     /// <see cref="ContainerFormatType.Ogg"/>, <see cref="ContainerFormatType.Mkv"/> or <see cref="ContainerFormatType.Webm"/> file
     /// and provides the decoded audio.
     /// </summary>
+    /// <remarks>
+    /// Initially, this was able to decode webm/mkv files as well via a seperate reader class.
+    /// That reader class didn't work too well and has been removed. The related code here is kept for future reference and marked with "//webm"
+    /// </remarks>
     public class ConcentusOggOpusStreamAudioSource : IStreamAudioSource
     {
         protected const int OutputSampleRate = 48000;
@@ -18,6 +22,7 @@ namespace Soundbox.Audio.Concentus
 
         protected AudioBlob AudioInput;
 
+        //webm:
         ///// <summary>
         ///// Used to extract an Ogg/Opus stream from an Mkv or webm stream.
         ///// </summary>
@@ -45,6 +50,7 @@ namespace Soundbox.Audio.Concentus
         {
             if (audioInput.Format is ContaineredStreamAudioFormat containered)
             {
+                //webm:
                 //if (containered.ContainerFormat == ContainerFormatType.Mkv || containered.ContainerFormat == ContainerFormatType.Webm)
                 //{
                 //    //need to convert first
@@ -81,7 +87,10 @@ namespace Soundbox.Audio.Concentus
         public static bool IsSupported(StreamAudioFormat format)
         {
             return format is ContaineredStreamAudioFormat containered &&
-                (containered.ContainerFormat == ContainerFormatType.Ogg || containered.ContainerFormat == ContainerFormatType.Webm || containered.ContainerFormat == ContainerFormatType.Mkv) &&
+                (containered.ContainerFormat == ContainerFormatType.Ogg
+                //webm:
+                //|| containered.ContainerFormat == ContainerFormatType.Webm || containered.ContainerFormat == ContainerFormatType.Mkv
+                ) &&
                 containered.AudioFormat.Type == StreamAudioFormatType.Opus;
         }
 
@@ -96,6 +105,7 @@ namespace Soundbox.Audio.Concentus
             {
                 AudioBlob audio = AudioInput;
 
+                //webm:
                 //if (MkvReader != null)
                 //{
                 //    //convert first
