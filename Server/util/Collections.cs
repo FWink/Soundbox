@@ -68,5 +68,21 @@ namespace Soundbox.Util
 
             return true;
         }
+
+        /// <summary>
+        /// Returns only those values of the enumerable that match the given type.
+        /// Basically a combination of using Linq.Where and Linq.Cast.
+        /// </summary>
+        /// <typeparam name="V"></typeparam>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public static IEnumerable<V> WhereIs<V>(this IEnumerable values)
+        {
+            foreach (var value in values)
+            {
+                if (value is V v)
+                    yield return v;
+            }
+        }
     }
 }

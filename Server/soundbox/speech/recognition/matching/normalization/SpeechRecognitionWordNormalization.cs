@@ -36,6 +36,11 @@ namespace Soundbox.Speech.Recognition
             {
                 var wordNormalized = word.ToLower(culture);
 
+                if (wordNormalized == "okay")
+                {
+                    wordNormalized = "ok";
+                }
+
                 if (english)
                 {
                     wordNormalized = wordNormalized.Replace("'s", "s").Replace("'re", "r").Replace("'m", "m");

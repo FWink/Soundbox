@@ -1356,19 +1356,14 @@ namespace Soundbox
             recognizer.Recognized += (sender, e) =>
             {
                 //try and match the spoken words
-                var match = matcher.Match(e, NodesCache.Values.Where(node => node is Sound).Cast<Sound>());
+                var match = matcher.Match(e,
+                    //detect sounds...
+                    NodesCache.Values.WhereIs<ISpeechRecognizable>()
+                    //...and special commands
+                    .Concat(SpeechRecognition_GetSpecialCommands()));
                 if (match.Success)
                 {
-                    Play(new User(), new SoundPlaybackRequest()
-                    {
-                        Sounds = new List<SoundPlayback>()
-                        {
-                            new SoundPlayback()
-                            {
-                                Sound = match.Recognizable as Sound
-                            }
-                        }
-                    });
+                    _ = SpeechRecognition_OnRecognized(match.Recognizable);
                 }
             };
 
@@ -1388,7 +1383,15 @@ namespace Soundbox
             return new SpeechRecognitionOptions()
             {
                 Languages = AppSettings.SpeechRecognition.Languages,
-                Phrases = NodesCache.Values.Where(node => node is ISoundboxPlayable).Cast<ISoundboxPlayable>().SelectMany(sound => sound.VoiceActivation == null ? new List<string>() : sound.VoiceActivation.SpeechPhrases).ToList()
+                Phrases = NodesCache.Values.WhereIs<ISoundboxPlayable>()
+                    .Where(sound => sound.VoiceActivation != null)
+                    .Select(sound => sound.VoiceActivation)
+                    //add special commands
+                    .Concat(SpeechRecognition_GetSpecialCommands())
+                    //filter null/empty lists
+                    .Where(command => command.SpeechPhrases?.Count > 0)
+                    .SelectMany(command => command.SpeechPhrases)
+                    .ToList()
             };
         }
 
@@ -1412,6 +1415,83 @@ namespace Soundbox
                 speechRecognizer.UpdateOptions(SpeechRecognition_GetOptions());
             }
         }
+
+        #region "Handle events"
+
+        /// <summary>
+        /// Called when the given voice-activated command has been recognized.
+        /// Executes the command (e.g., plays a sound).
+        /// </summary>
+        /// <param name="recognized"></param>
+        /// <returns></returns>
+        protected async Task SpeechRecognition_OnRecognized(ISpeechRecognizable recognized)
+        {
+            if (recognized is Sound sound)
+            {
+                await Play(new User(), new SoundPlaybackRequest()
+                {
+                    Sounds = new List<SoundPlayback>()
+                    {
+                        new SoundPlayback()
+                        {
+                            Sound = sound
+                        }
+                    }
+                });
+            }
+            else if (recognized is SpeechRecognitionStopCommand)
+            {
+                await Stop();
+            }
+        }
+
+        #endregion
+
+        #region "Special commands"
+
+        /// <summary>
+        /// Returns a list of all "special" commands (such as <see cref="SpeechRecognition_GetStopCommand"/>)
+        /// that should be considered during the voice recognition.
+        /// </summary>
+        /// <returns></returns>
+        protected ICollection<SoundboxVoiceActivation> SpeechRecognition_GetSpecialCommands()
+        {
+            var commands = new List<SoundboxVoiceActivation>();
+
+            var stopCommand = SpeechRecognition_GetStopCommand();
+            if (stopCommand?.SpeechTriggers?.Count > 0)
+                commands.Add(stopCommand);
+
+            return commands;
+        }
+
+        #region "Stop"
+
+        /// <summary>
+        /// Returns the configured "stop" command (if any) that stops all playback.
+        /// </summary>
+        /// <returns></returns>
+        protected SoundboxVoiceActivation SpeechRecognition_GetStopCommand()
+        {
+            var stopConfig = AppSettings.SpeechRecognition.StopVoiceCommand;
+            if (stopConfig != null)
+                return new SpeechRecognitionStopCommand(stopConfig);
+            return null;
+        }
+
+        /// <summary>
+        /// Doesn't do anything, detected by <see cref="SpeechRecognition_OnRecognized(ISpeechRecognizable)"/>.
+        /// </summary>
+        protected class SpeechRecognitionStopCommand : SoundboxVoiceActivation
+        {
+            public SpeechRecognitionStopCommand(SoundboxVoiceActivation config) : base(config)
+            {
+            }
+        }
+
+        #endregion
+
+        #endregion
 
         #region "Client Test"
 

@@ -25,5 +25,10 @@ namespace Soundbox.AppSettings
         /// See <see cref="Speech.Recognition.SpeechRecognitionOptions.Languages"/>
         /// </summary>
         public IList<string> Languages { get; set; }
+
+        /// <summary>
+        /// Voice command that cause the soundbox to stop all current playback (like pressing the "stop" button)
+        /// </summary>
+        public SoundboxVoiceActivation StopVoiceCommand { get; set; }
     }
 }
