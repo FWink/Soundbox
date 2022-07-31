@@ -176,7 +176,8 @@ namespace Soundbox.Speech.Recognition.Azure
                     bool restart = false;
                     bool log = true;
 
-                    if (e.ErrorCode == CancellationErrorCode.Forbidden || e.ErrorCode == CancellationErrorCode.AuthenticationFailure)
+                    if (e.ErrorCode == CancellationErrorCode.Forbidden || e.ErrorCode == CancellationErrorCode.AuthenticationFailure ||
+                            (e.ErrorCode == CancellationErrorCode.BadRequest && e.ErrorDetails.Contains("Quota exceeded")))
                     {
                         //out of quota (or invalid key, try the next one anyway)
                         int credentialsIndexCurrent = CredentialsIndex;
@@ -201,7 +202,7 @@ namespace Soundbox.Speech.Recognition.Azure
 
                     if (log)
                     {
-                        Logger.LogWarning($"Recognition stopped. reason={e.Reason}, erroCode={e.ErrorCode}, details={e.ErrorDetails}, restarting={restart}");
+                        Logger.LogWarning($"Recognition stopped. reason={e.Reason}, errorCode={e.ErrorCode}, details={e.ErrorDetails}, restarting={restart}");
                     }
 
                     if (restart)
