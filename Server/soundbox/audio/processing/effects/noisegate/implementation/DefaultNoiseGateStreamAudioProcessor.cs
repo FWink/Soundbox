@@ -275,7 +275,7 @@ namespace Soundbox.Audio.Processing.Noisegate.Implementation
                 }
                 else if (format.BitsPerSample == 24)
                 {
-                    max = 16777215;
+                    max = 8388607;
 
                     int i;
                     if (BitConverter.IsLittleEndian)
@@ -285,11 +285,13 @@ namespace Soundbox.Audio.Processing.Noisegate.Implementation
 
                     if (format.IntEncodingSigned)
                     {
-                        if ((i & (1 << 24)) != 0)
+                        if ((i & (1 << 23)) != 0)
                         {
                             //is negative
-                            i |= 0xFF;
+                            i |= unchecked((int)0xFF000000);
                         }
+                        if (i == -8388608)
+                            ++i;
                         value = (uint)Math.Abs(i);
                     }
                     else
