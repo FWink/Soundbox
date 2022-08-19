@@ -16,9 +16,23 @@ namespace Soundbox.Test
         public SpeechRecognitionMatcherTest()
         {
             ServiceProvider = new TestServiceProvider();
-            Matcher = ServiceProvider.GetService(typeof(SpeechRecognitionMatcher)) as SpeechRecognitionMatcher;
+            Matcher = GetMatcher();
         }
 
+        /// <summary>
+        /// Returns a freshly constructed <see cref="SpeechRecognitionMatcher"/>
+        /// (as opposed to <see cref="Matcher"/> which is the same instance for each test and is not suitable for tests that require more than one matcher instance).
+        /// </summary>
+        /// <returns></returns>
+        protected SpeechRecognitionMatcher GetMatcher()
+        {
+            return ServiceProvider.GetService(typeof(SpeechRecognitionMatcher)) as SpeechRecognitionMatcher;
+        }
+
+        /// <summary>
+        /// Runs a large number of recognizables against an increasingly longer text that will never produce a match.
+        /// In earlier versions of the Soundbox, this produced a StackOverflow error.
+        /// </summary>
         [TestMethod]
         public void LongTextStackOverflowTest()
         {
@@ -44,6 +58,11 @@ namespace Soundbox.Test
             }
         }
 
+        /// <summary>
+        /// Most basic test: matches a single word against text (one speech event) that includes that word.
+        /// </summary>
+        /// <param name="trigger"></param>
+        /// <param name="spoken"></param>
         [TestMethod]
         [DataRow("test", "test")]
         [DataRow("test", "test word")]
@@ -65,6 +84,12 @@ namespace Soundbox.Test
             Assert.IsFalse(result.Success);
         }
 
+        /// <summary>
+        /// Matches a single word against text (one speech event) that may contain the word multiple times and counts the number of matches.
+        /// </summary>
+        /// <param name="trigger"></param>
+        /// <param name="spoken"></param>
+        /// <param name="countExpected"></param>
         [TestMethod]
         [DataRow("test", "test", 1)]
         [DataRow("test", "test test", 2)]
@@ -92,6 +117,12 @@ namespace Soundbox.Test
             Assert.IsFalse(result.Success);
         }
 
+        /// <summary>
+        /// Matches a single word against text that includes that word.
+        /// The text is processed as a chain of events, just like we would receive it from a <see cref="ISpeechRecognitionService"/>.
+        /// </summary>
+        /// <param name="trigger"></param>
+        /// <param name="spoken"></param>
         [TestMethod]
         [DataRow("test", "test")]
         [DataRow("test", "test word")]
@@ -122,6 +153,41 @@ namespace Soundbox.Test
 
             result = Matcher.Match(events.Last(), recognizable);
             Assert.IsFalse(result.Success);
+        }
+
+        /// <summary>
+        /// Runs a set of identical recognizables against a text that contains a match.
+        /// This test is repeated multiple times to try and assert that the detected recognizable is selected randomly.
+        /// </summary>
+        [TestMethod]
+        public void MultiMatchRandomTest()
+        {
+            var recognizables = new ISpeechRecognizable[]
+            {
+                new TestSpeechRecognizable("test"),
+                new TestSpeechRecognizable("test")
+            };
+            var speechEvent = GetSpeechEvent("test");
+
+            var matchedRecognizables = new HashSet<ISpeechRecognizable>();
+
+            for (int i = 0; i < 100; ++i)
+            {
+                var matcher = GetMatcher();
+                var result = matcher.Match(speechEvent, recognizables);
+
+                Assert.IsTrue(result.Success);
+
+                matchedRecognizables.Add(result.Recognizable);
+                if (matchedRecognizables.Count == recognizables.Length)
+                {
+                    //we've matched each input at least once. we're done here
+                    return;
+                }
+            }
+
+            //at least one recognizable has never been matched
+            Assert.Fail();
         }
 
         #region "Helpers"
@@ -172,6 +238,7 @@ namespace Soundbox.Test
 
         /// <summary>
         /// Turns the given list of words into a list of related speech events.
+        /// Note that this method is virtual and the text and kind of the returned events depends on <see cref="GetTestModeWordResult"/>
         /// </summary>
         /// <param name="language"></param>
         /// <param name="words"></param>
@@ -205,6 +272,16 @@ namespace Soundbox.Test
             }
 
             public ICollection<string> SpeechTriggers { get; }
+
+            public override bool Equals(object obj)
+            {
+                return object.ReferenceEquals(obj, this);
+            }
+
+            public override int GetHashCode()
+            {
+                return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this);
+            }
         }
 
         #endregion

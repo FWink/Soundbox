@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Soundbox.Util
@@ -83,6 +84,38 @@ namespace Soundbox.Util
                 if (value is V v)
                     yield return v;
             }
+        }
+
+        /// <summary>
+        /// RNG used by <see cref="Shuffle{V}(IEnumerable{V})"/>
+        /// </summary>
+        private static readonly ThreadLocal<Random> ShuffleRandom = new ThreadLocal<Random>(() => new Random());
+
+        /// <summary>
+        /// Shuffles the given sequence of values.
+        /// </summary>
+        /// <remarks>
+        /// Allocates a copy of the input list, thus requiring O(n) extra memory.
+        /// </remarks>
+        /// <typeparam name="V"></typeparam>
+        /// <param name="values"></param>
+        /// <returns></returns>
+        public static IEnumerable<V> Shuffle<V>(this IEnumerable<V> values)
+        {
+            var list = values.ToList();
+            var rng = ShuffleRandom.Value;
+
+            int n = list.Count;
+            while (n > 1)
+            {
+                n--;
+                int k = rng.Next(n + 1);
+                V value = list[k];
+                list[k] = list[n];
+                list[n] = value;
+            }
+
+            return list;
         }
     }
 }

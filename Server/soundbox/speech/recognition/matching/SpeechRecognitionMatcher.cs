@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Soundbox.Util;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -30,7 +31,8 @@ namespace Soundbox.Speech.Recognition
         /// <returns></returns>
         public SpeechRecognitionMatchResult Match(SpeechRecognizedEvent speechEvent, IEnumerable<ISpeechRecognizable> recognizables)
         {
-            foreach (var recognizable in recognizables)
+            //shuffle the input list: this allows us to pick a random "winner" when there are multiple recognizables with matching triggers
+            foreach (var recognizable in recognizables.Shuffle())
             {
                 var result = Match(speechEvent, recognizable);
                 if (result.Success)
