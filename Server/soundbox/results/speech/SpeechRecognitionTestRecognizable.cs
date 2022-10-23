@@ -10,5 +10,7 @@ namespace Soundbox.Speech.Recognition
         public string ID { get; set; }
 
         public ICollection<string> SpeechTriggers { get; set; }
+
+        public double SpeechProbability { get; set; }
     }
 }

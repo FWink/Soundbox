@@ -273,6 +273,8 @@ namespace Soundbox.Test
 
             public ICollection<string> SpeechTriggers { get; }
 
+            public double SpeechProbability => 1;
+
             public override bool Equals(object obj)
             {
                 return object.ReferenceEquals(obj, this);

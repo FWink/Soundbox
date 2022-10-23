@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Soundbox.Util;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -106,6 +107,12 @@ namespace Soundbox.Speech.Recognition
                         //matched
                         Logger.LogTrace($"Result {speechEvent.ResultID}: Matched words '{recognizable.SpeechTriggers.ElementAt(iCandidate)}' in spoken '{speechEvent.Text}'[{newState.WordsUsedIndex}] ({speechEvent.Language})");
 
+                        if (!SelectRandom(recognizable))
+                        {
+                            Logger.LogTrace($"Discarding match on '{recognizable.SpeechTriggers.ElementAt(iCandidate)}'. Probability check failed ({recognizable.SpeechProbability})");
+                            return result;
+                        }
+
                         result.Success = true;
                         result.WordsSpokenMatched = spokenNormalized.GetInputWords(iWords, iWords + triggerWords.Count);
                         newState.AddWordsUsed(iWords + triggerWords.Count);
@@ -144,6 +151,26 @@ namespace Soundbox.Speech.Recognition
 
             return newState;
         }
+
+        #region "Random selection"
+
+        /// <summary>
+        /// Called in <see cref="Match(SpeechRecognizedEvent, ISpeechRecognizable)"/>.
+        /// Runs a probability check against <see cref="ISpeechRecognizable.SpeechProbability"/> (if applicable) to decide if we should actually match this recognizable (true)
+        /// or skip it (false).
+        /// </summary>
+        /// <param name="recognizable"></param>
+        /// <returns></returns>
+        protected bool SelectRandom(ISpeechRecognizable recognizable)
+        {
+            if (!(recognizable.SpeechProbability > 0 && recognizable.SpeechProbability < 1))
+                //not set up or 100% probability
+                return true;
+            //this should be good enough, don't need a crypto RNG here:
+            return new Random().NextDouble() < recognizable.SpeechProbability;
+        }
+
+        #endregion
 
         #region "Normalization"
 

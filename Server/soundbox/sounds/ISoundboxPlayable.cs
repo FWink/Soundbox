@@ -20,6 +20,9 @@ namespace Soundbox
         [JsonIgnore]
         ICollection<string> ISpeechRecognizable.SpeechTriggers => VoiceActivation?.SpeechTriggers;
 
+        [JsonIgnore]
+        double ISpeechRecognizable.SpeechProbability => VoiceActivation?.SpeechProbability ?? double.NaN;
+
         #endregion
     }
 }

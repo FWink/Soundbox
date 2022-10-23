@@ -23,6 +23,8 @@ namespace Soundbox
             }
         }
 
+        public double SpeechProbability { get; set; }
+
         private ICollection<string> _speechPhrases;
         /// <summary>
         /// Special words or phrases included in <see cref="ISpeechRecognizable.SpeechTriggers" /> that are hard to detect:

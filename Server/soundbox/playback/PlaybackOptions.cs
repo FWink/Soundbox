@@ -16,7 +16,7 @@ namespace Soundbox
         public int Volume;
 
         /// <summary>
-        /// Playback speed which affects the pitch as well: doubling the speed increases the pitch by an octave.
+        /// Playback speed which affects the pitch as well: doubling the speed increases the pitch by an octave (1.0 == default speed and pitch).
         /// </summary>
         public double SpeedPitch;
 
