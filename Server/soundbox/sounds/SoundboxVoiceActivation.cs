@@ -1,4 +1,5 @@
-﻿using Soundbox.Speech.Recognition;
+﻿using Newtonsoft.Json;
+using Soundbox.Speech.Recognition;
 using System.Collections.Generic;
 
 namespace Soundbox
@@ -23,6 +24,7 @@ namespace Soundbox
             }
         }
 
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public double SpeechProbability { get; set; }
 
         private ICollection<string> _speechPhrases;

@@ -1054,7 +1054,8 @@ export class Soundbox {
 
                     paramRecognizables.push({
                         id: sound.id,
-                        speechTriggers: sound.voiceActivation.speechTriggers
+                        speechTriggers: sound.voiceActivation.speechTriggers,
+                        speechProbability: sound.voiceActivation.speechProbability
                     });
                 }
             }
@@ -1067,7 +1068,8 @@ export class Soundbox {
 
                     paramRecognizables.push({
                         id: recognizable.id,
-                        speechTriggers: recognizable.speechTriggers
+                        speechTriggers: recognizable.speechTriggers,
+                        speechProbability: recognizable.speechProbability
                     });
                 }
             }

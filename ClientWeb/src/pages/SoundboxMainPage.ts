@@ -133,7 +133,8 @@ export class SoundboxMainPage implements OnInit {
             name: sound.name,
             voiceActivation: {
                 speechTriggers: sound.getSpeechTriggers(),
-                speechPhrases: sound.getSpeechPhrases()
+                speechPhrases: sound.getSpeechPhrases(),
+                speechProbability: sound.getSpeechProbability()
             }
         });
 
@@ -245,7 +246,8 @@ export class SoundboxMainPage implements OnInit {
         editSound.name = sound.name;
         editSound.voiceActivation = {
             speechTriggers: sound.getSpeechTriggers(),
-            speechPhrases: sound.getSpeechPhrases()
+            speechPhrases: sound.getSpeechPhrases(),
+            speechProbability: sound.getSpeechProbability()
         };
 
         this.soundbox.edit(editSound).then(() => {
@@ -405,6 +407,8 @@ class EditSound {
 
     public speechPhrases: string;
 
+    public speechProbability: string;
+
     public constructor(sound?: ISound) {
         this.sound = sound;
         if (sound) {
@@ -412,6 +416,9 @@ class EditSound {
             if (sound.voiceActivation) {
                 this.speechTriggers = sound.voiceActivation.speechTriggers.join(";");
                 this.speechPhrases = sound.voiceActivation.speechPhrases.join(";");
+                if (sound.voiceActivation.speechProbability) {
+                    this.speechProbability = (sound.voiceActivation.speechProbability * 100).toFixed(0);
+                }
             }
         }
     }
@@ -432,6 +439,16 @@ class EditSound {
         if (!this.speechPhrases)
             return [];
         return this.speechPhrases.split(";").map(str => str.trim()).filter(str => str.length > 0);
+    }
+
+    /**
+     * Returns the entered speech probability ("weight") (entered as values 1-100) as a normalized (0;1) value.
+     * */
+    public getSpeechProbability(): number {
+        let probability = parseInt(this.speechProbability);
+        if (!(probability > 0 && probability < 100))
+            return NaN;
+        return probability / 100;
     }
 }
 
@@ -471,6 +488,7 @@ class NewSound extends EditSound {
 class TestRecognizable implements ISpeechRecognitionTestRecognizable {
     public id: string;
     public speechTriggers: string[];
+    public speechProbability: number;
 
     public sound: EditSound;
 
@@ -484,6 +502,7 @@ class TestRecognizable implements ISpeechRecognitionTestRecognizable {
             this.id = Math.random().toString() + sound.name;
         }
         this.speechTriggers = sound.getSpeechTriggers();
+        this.speechProbability = sound.getSpeechProbability();
     }
 }
 

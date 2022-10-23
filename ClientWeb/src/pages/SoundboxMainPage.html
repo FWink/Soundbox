@@ -60,6 +60,7 @@
             <th>Sound name</th>
             <th>Speech: trigger (separate with ; )</th>
             <th>Speech: special words (separate with ; )</th>
+            <th>Speech: probability (in % )</th>
             <th>
                 <button type="button" (click)="uploadAll()" [disabled]="uploadsInProgress > 0">Upload All</button>
             </th>
@@ -78,6 +79,9 @@
                 <input type="text" [(ngModel)]="sound.speechPhrases" />
             </td>
             <td>
+                <input type="number" [(ngModel)]="sound.speechProbability" />
+            </td>
+            <td>
                 <button type="button" (click)="upload(sound)" [disabled]="uploadsInProgress > 0">Upload</button>
             </td>
         </tr>
@@ -92,6 +96,7 @@
                 <th>Sound name</th>
                 <th>Speech: trigger (separate with ; )</th>
                 <th>Speech: special words (separate with ; )</th>
+                <th>Speech: probability (in % )</th>
             </tr>
             <tr *ngFor="let sound of editSounds">
                 <td>
@@ -102,6 +107,9 @@
                 </td>
                 <td>
                     <input type="text" [(ngModel)]="sound.speechPhrases" />
+                </td>
+                <td>
+                    <input type="number" [(ngModel)]="sound.speechProbability" />
                 </td>
                 <td>
                     <button type="button" (click)="edit(sound)">Save</button>
